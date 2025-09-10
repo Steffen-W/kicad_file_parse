@@ -1,0 +1,10 @@
+[flake8]
+ignore = E501,W503
+exclude = 
+    .git,
+    __pycache__,
+    .mypy_cache,
+    .pytest_cache,
+    build,
+    dist,
+    kicad_parser/sexpdata.py

@@ -1,0 +1,28 @@
+# Include essential files
+include README.md
+include LICENSE
+include test_functionality.py
+
+# Include examples and test data
+recursive-include examples *.py
+recursive-include examples *.kicad_sym
+recursive-include examples *.kicad_mod
+
+# Exclude development files
+exclude CLAUDE.md
+prune ref
+prune .git
+prune .claude
+exclude .gitignore
+
+# Exclude build artifacts
+prune build
+prune dist
+prune *.egg-info
+
+# Exclude temporary files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude temp_*

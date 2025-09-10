@@ -1,0 +1,134 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kicad-parser"
+version = "1.0.0"
+authors = [
+    {name = "KiCad Parser Contributors"},
+]
+description = "A comprehensive Python library for parsing and manipulating KiCad S-Expression files"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+keywords = [
+    "kicad", "eda", "pcb", "schematic", "electronics", 
+    "parser", "s-expression", "footprint", "symbol"
+]
+dependencies = [
+    # No external dependencies - includes bundled sexpdata
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=5.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Steffen-W/kicad-parser"
+Repository = "https://github.com/Steffen-W/kicad-parser.git"
+"Bug Tracker" = "https://github.com/Steffen-W/kicad-parser/issues"
+
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kicad_parser*"]
+exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+kicad_parser = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | examples
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["kicad_parser"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "kicad_parser.sexpdata"
+ignore_errors = true
+
+[tool.pyright]
+include = [
+    "kicad_parser",
+    "examples"
+]
+exclude = [
+    "**/__pycache__",
+    "tests"
+]
+ignore = [
+    "kicad_parser/sexpdata.py"
+]
+
