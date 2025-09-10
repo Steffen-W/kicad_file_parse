@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name "eigene")(type "KiCad")(uri "${KICAD_PROJECT_DIR}/eigene.pretty")(options "")(descr ""))
+)

@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "test-import")(type "KiCad")(uri "${KIPRJMOD}/test-import.kicad_sym")(options "")(descr ""))
+  (lib (name "test-import2")(type "KiCad")(uri "${KIPRJMOD}/test-import2.kicad_sym")(options "")(descr ""))
+)

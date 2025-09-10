@@ -1,0 +1,65 @@
+(kicad_sch (version 20230121) (generator eeschema)
+
+  (uuid 1125d3f8-ecc3-452c-bf67-266114004d56)
+
+  (paper "A4")
+
+  (lib_symbols
+  )
+
+
+  (sheet (at 177.8 25.4) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 49007c04-90f1-4a64-91a4-1f221a07f03d)
+    (property "Sheetname" "LiFePo Lader LTC7103" (at 177.8 24.6884 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "LiFePo_Lader_LTC7103.kicad_sch" (at 177.8 29.7946 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "HF_Empfänger"
+        (path "/1125d3f8-ecc3-452c-bf67-266114004d56" (page "4"))
+      )
+    )
+  )
+
+  (sheet (at 91.44 25.4) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 88a175ec-2418-4303-aa6d-f82e030c7175)
+    (property "Sheetname" "Anpassnetzwerk" (at 91.44 24.6884 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "Anpassnetzwerk.kicad_sch" (at 91.44 29.7946 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "HF_Empfänger"
+        (path "/1125d3f8-ecc3-452c-bf67-266114004d56" (page "1"))
+      )
+    )
+  )
+
+  (sheet (at 127 25.4) (size 12.7 3.81) (fields_autoplaced)
+    (stroke (width 0) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid b1ce4f29-da9b-4dff-8bf7-abcd90e7ed0c)
+    (property "Sheetname" "5V DC/DC Wandler für Last TPS61230" (at 127 24.6884 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "5V_DC%2fDC_Wandler_für_Last_TPS61230.kicad_sch" (at 127 29.7946 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "HF_Empfänger"
+        (path "/1125d3f8-ecc3-452c-bf67-266114004d56" (page "3"))
+      )
+    )
+  )
+
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+)
