@@ -75,23 +75,18 @@ class Junction(KiCadObject):
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "Junction":
         at_token = SExprParser.find_token(sexpr, "at")
-        diameter_token = SExprParser.find_token(sexpr, "diameter")
         color_token = SExprParser.find_token(sexpr, "color")
         uuid_token = SExprParser.find_token(sexpr, "uuid")
 
         return cls(
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
-            diameter=(
-                SExprParser.safe_get_float(diameter_token, 1, 0.0)
-                if diameter_token
-                else 0.0
-            ),
+            position=Position.from_sexpr(at_token),
+            diameter=SExprParser.get_required_float(sexpr, "diameter", default=0.0),
             color=(
                 tuple(color_token[1:5])
                 if color_token and len(color_token) >= 5
                 else None
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -120,8 +115,8 @@ class NoConnect(KiCadObject):
         uuid_token = SExprParser.find_token(sexpr, "uuid")
 
         return cls(
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            position=Position.from_sexpr(at_token),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -156,10 +151,10 @@ class BusEntry(KiCadObject):
             )
 
         return cls(
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             size=size,
-            stroke=Stroke.from_sexpr(stroke_token) if stroke_token else Stroke(),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            stroke=Stroke.from_sexpr(stroke_token),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -192,8 +187,8 @@ class Wire(KiCadObject):
                 if pts_token
                 else CoordinatePointList()
             ),
-            stroke=Stroke.from_sexpr(stroke_token) if stroke_token else Stroke(),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            stroke=Stroke.from_sexpr(stroke_token),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -225,8 +220,8 @@ class Bus(KiCadObject):
                 if pts_token
                 else CoordinatePointList()
             ),
-            stroke=Stroke.from_sexpr(stroke_token) if stroke_token else Stroke(),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            stroke=Stroke.from_sexpr(stroke_token),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -259,8 +254,8 @@ class Polyline(KiCadObject):
                 if pts_token
                 else CoordinatePointList()
             ),
-            stroke=Stroke.from_sexpr(stroke_token) if stroke_token else Stroke(),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            stroke=Stroke.from_sexpr(stroke_token),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -293,13 +288,13 @@ class SchematicText(KiCadObject):
 
         return cls(
             text=text,
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             effects=(
                 TextEffects.from_sexpr(effects_token)
                 if effects_token
                 else TextEffects()
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -330,13 +325,13 @@ class LocalLabel(KiCadObject):
 
         return cls(
             text=text,
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             effects=(
                 TextEffects.from_sexpr(effects_token)
                 if effects_token
                 else TextEffects()
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -383,13 +378,13 @@ class GlobalLabel(KiCadObject):
                 LabelShape,
                 LabelShape.INPUT,
             ),
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             effects=(
                 TextEffects.from_sexpr(effects_token)
                 if effects_token
                 else TextEffects()
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
             properties=properties,
             fields_autoplaced=SExprParser.has_symbol(sexpr, "fields_autoplaced"),
         )
@@ -439,13 +434,13 @@ class HierarchicalLabel(KiCadObject):
                 LabelShape,
                 LabelShape.INPUT,
             ),
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             effects=(
                 TextEffects.from_sexpr(effects_token)
                 if effects_token
                 else TextEffects()
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -527,9 +522,7 @@ class SymbolPin:
         number = str(SExprParser.get_value(sexpr, 1, ""))
         uuid_token = SExprParser.find_token(sexpr, "uuid")
 
-        return cls(
-            number=number, uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID("")
-        )
+        return cls(number=number, uuid=UUID.from_sexpr(uuid_token))
 
     def to_sexpr(self) -> SExpr:
         return [Symbol("pin"), self.number, self.uuid.to_sexpr()]
@@ -582,7 +575,7 @@ class SchematicSymbol(KiCadObject):
 
         return cls(
             library_id=library_id,
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             unit=(SExprParser.safe_get_int(unit_token, 1, 1) if unit_token else 1),
             in_bom=(
                 str(SExprParser.get_value(in_bom_token, 1, "yes")).lower() == "yes"
@@ -594,7 +587,7 @@ class SchematicSymbol(KiCadObject):
                 if on_board_token
                 else True
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
             properties=properties,
             pins=pins,
             projects=projects,
@@ -650,13 +643,13 @@ class HierarchicalPin(KiCadObject):
         return cls(
             name=name,
             electrical_type=elec_type,
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             effects=(
                 TextEffects.from_sexpr(effects_token)
                 if effects_token
                 else TextEffects()
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -783,11 +776,11 @@ class HierarchicalSheet(KiCadObject):
                 projects.append(SheetProject.from_sexpr(project_token))
 
         return cls(
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
+            position=Position.from_sexpr(at_token),
             size=size,
-            stroke=Stroke.from_sexpr(stroke_token) if stroke_token else Stroke(),
+            stroke=Stroke.from_sexpr(stroke_token),
             fill_color=fill_color,
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
             sheet_name=sheet_name,
             file_name=file_name,
             pins=pins,
@@ -971,7 +964,7 @@ class KiCadSchematic(KiCadObject):
                 if generator_token
                 else "kicad-parser"
             ),
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
             page_settings=(
                 PageSettings.from_sexpr(paper_token) if paper_token else PageSettings()
             ),

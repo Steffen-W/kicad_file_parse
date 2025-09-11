@@ -110,7 +110,7 @@ class SymbolCircle(KiCadObject):
     def from_sexpr(cls, sexpr: SExpr) -> "SymbolCircle":
         return cls(
             center=SExprParser.get_position_with_default(sexpr, "center"),
-            radius=SExprParser.get_optional_float(sexpr, "radius") or 0.0,
+            radius=SExprParser.get_required_float(sexpr, "radius", default=0.0),
             stroke=SExprParser.parse_stroke_or_width(sexpr),
             fill=(
                 Fill.from_sexpr(fill_token)

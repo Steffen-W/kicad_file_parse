@@ -197,71 +197,71 @@ __all__ = [
     "detect_kicad_file_type",
     # Common classes
     "KiCadObject",
-    "Position",
-    "CoordinatePoint",
-    "CoordinatePointList",
-    "Stroke",
+    "Position",  # Symbol("at") or Symbol("xyz")
+    "CoordinatePoint",  # Symbol("xy")
+    "CoordinatePointList",  # Symbol("pts")
+    "Stroke",  # Symbol("stroke")
     "StrokeType",
-    "Fill",
+    "Fill",  # Symbol("fill")
     "FillType",
-    "TextEffects",
-    "UUID",
-    "Property",
-    "Font",
-    "PageSettings",
-    "TitleBlock",
-    "Image",
+    "TextEffects",  # Symbol("effects")
+    "UUID",  # Symbol("tstamp") or Symbol("uuid")
+    "Property",  # Symbol("property")
+    "Font",  # Symbol("font")
+    "PageSettings",  # Symbol("page")
+    "TitleBlock",  # Symbol("title_block")
+    "Image",  # Symbol("image")
     "str_to_sexpr",
     "sexpr_to_str",
     # Symbol classes
-    "KiCadSymbolLibrary",
-    "KiCadSymbol",
-    "SymbolUnit",
-    "SymbolProperty",
-    "SymbolPin",
-    "SymbolArc",
-    "SymbolCircle",
-    "SymbolRectangle",
-    "SymbolText",
-    "SymbolPolyline",
-    "SymbolBezier",
+    "KiCadSymbolLibrary",  # Symbol("kicad_symbol_lib")
+    "KiCadSymbol",  # Symbol("symbol")
+    "SymbolUnit",  # Symbol("symbol")
+    "SymbolProperty",  # Symbol("property")
+    "SymbolPin",  # Symbol("pin")
+    "SymbolArc",  # Symbol("arc")
+    "SymbolCircle",  # Symbol("circle")
+    "SymbolRectangle",  # Symbol("rectangle")
+    "SymbolText",  # Symbol("text")
+    "SymbolPolyline",  # Symbol("polyline")
+    "SymbolBezier",  # Symbol("bezier")
     "PinElectricalType",
     "PinGraphicStyle",
     # Board/Footprint classes
-    "KiCadFootprint",
-    "FootprintText",
-    "FootprintLine",
-    "FootprintRectangle",
-    "FootprintCircle",
-    "FootprintArc",
-    "FootprintPolygon",
-    "FootprintPad",
-    "Footprint3DModel",
-    "Net",
-    "FootprintAttributes",
-    "DrillDefinition",
+    "KiCadFootprint",  # Symbol("footprint")
+    "FootprintText",  # Symbol("fp_text")
+    "FootprintLine",  # Symbol("fp_line")
+    "FootprintRectangle",  # Symbol("fp_rect")
+    "FootprintCircle",  # Symbol("fp_circle")
+    "FootprintArc",  # Symbol("fp_arc")
+    "FootprintPolygon",  # Symbol("fp_poly")
+    "FootprintPad",  # Symbol("pad")
+    "Footprint3DModel",  # Symbol("model")
+    "Net",  # Symbol("net")
+    "FootprintAttributes",  # Symbol("attr")
+    "DrillDefinition",  # Symbol("drill")
     "PadType",
     "PadShape",
     "FootprintType",
     "FootprintTextType",
     # Board Element classes
-    "Zone",
-    "ZoneConnect",
-    "ZoneFillSettings",
+    "Zone",  # Symbol("zone")
+    "ZoneConnect",  # Symbol("connect")
+    "ZoneFillSettings",  # Symbol("fill")
     "PadConnection",
     "parse_zone_connect",
     # Graphics classes
-    "GraphicalText",
-    "GraphicalLine",
-    "GraphicalRectangle",
-    "GraphicalCircle",
-    "GraphicalArc",
-    "GraphicalPolygon",
-    "GraphicalBezier",
-    "GraphicalTextBox",
-    "Dimension",
-    "DimensionFormat",
-    "DimensionStyle",
+    "GraphicalText",  # Symbol("gr_text")
+    "GraphicalLine",  # Symbol("gr_line")
+    "GraphicalRectangle",  # Symbol("gr_rect")
+    "GraphicalCircle",  # Symbol("gr_circle")
+    "GraphicalArc",  # Symbol("gr_arc")
+    "GraphicalPolygon",  # Symbol("gr_poly")
+    "GraphicalBezier",  # Symbol("gr_curve")
+    "GraphicalTextBox",  # Symbol("gr_text_box")
+    "Dimension",  # Symbol("dimension")
+    "DimensionFormat",  # Symbol("format")
+    "DimensionStyle",  # Symbol("style")
     "DimensionType",
     # File I/O functions
     "load_kicad_file",
@@ -290,48 +290,48 @@ __all__ = [
     "example_symbol_creation",
     "example_footprint_creation",
     # Worksheet classes
-    "KiCadWorksheet",
-    "WorksheetSetup",
-    "WorksheetLine",
-    "WorksheetRectangle",
-    "WorksheetPolygon",
-    "WorksheetText",
-    "WorksheetBitmap",
+    "KiCadWorksheet",  # Symbol("kicad_wks")
+    "WorksheetSetup",  # Symbol("setup")
+    "WorksheetLine",  # Symbol("line")
+    "WorksheetRectangle",  # Symbol("rect")
+    "WorksheetPolygon",  # Symbol("polygon")
+    "WorksheetText",  # Symbol("tbtext")
+    "WorksheetBitmap",  # Symbol("bitmap")
     "CornerType",
     # Schematic classes
-    "KiCadSchematic",
-    "Junction",
-    "NoConnect",
-    "BusEntry",
-    "Wire",
-    "Bus",
-    "Polyline",
-    "SchematicText",
-    "LocalLabel",
-    "GlobalLabel",
-    "HierarchicalLabel",
-    "SchematicSymbol",
-    "HierarchicalSheet",
-    "HierarchicalPin",
-    "RootSheetInstance",
-    "SymbolInstance",
-    "SymbolProject",
-    "SheetInstance",
-    "SheetProject",
+    "KiCadSchematic",  # Symbol("kicad_sch")
+    "Junction",  # Symbol("junction")
+    "NoConnect",  # Symbol("no_connect")
+    "BusEntry",  # Symbol("bus_entry")
+    "Wire",  # Symbol("wire")
+    "Bus",  # Symbol("bus")
+    "Polyline",  # Symbol("polyline")
+    "SchematicText",  # Symbol("text")
+    "LocalLabel",  # Symbol("label")
+    "GlobalLabel",  # Symbol("global_label")
+    "HierarchicalLabel",  # Symbol("hierarchical_label")
+    "SchematicSymbol",  # Symbol("symbol")
+    "HierarchicalSheet",  # Symbol("sheet")
+    "HierarchicalPin",  # Symbol("pin")
+    "RootSheetInstance",  # Symbol("sheet_instances")
+    "SymbolInstance",  # Symbol("symbol_instances")
+    "SymbolProject",  # Symbol("project")
+    "SheetInstance",  # Symbol("path")
+    "SheetProject",  # Symbol("project")
     "LabelShape",
     # Schematic functions
     "load_schematic",
     "save_schematic",
     "create_basic_schematic",
     # PCB classes
-    "KiCadPCB",
-    "GeneralSettings",
-    "BoardLayer",
-    "BoardSetup",
-    "BoardNet",
-    "TrackSegment",
-    "TrackVia",
-    "TrackArc",
+    "KiCadPCB",  # Symbol("kicad_pcb")
+    "GeneralSettings",  # Symbol("general")
+    "BoardLayer",  # Symbol("layer")
+    "BoardSetup",  # Symbol("setup")
+    "BoardNet",  # Symbol("net")
+    "TrackSegment",  # Symbol("segment")
+    "TrackVia",  # Symbol("via")
+    "TrackArc",  # Symbol("arc")
     "LayerType",
     "ViaType",
     # PCB functions
@@ -339,9 +339,9 @@ __all__ = [
     "save_pcb",
     "create_basic_pcb",
     # Design Rules classes
-    "KiCadDesignRules",
-    "DesignRule",
-    "DesignRuleConstraint",
+    "KiCadDesignRules",  # Symbol("kicad_dru")
+    "DesignRule",  # Symbol("rule")
+    "DesignRuleConstraint",  # Symbol("constraint")
     "ConstraintValue",
     "ConstraintType",
     "DisallowType",

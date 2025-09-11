@@ -53,14 +53,22 @@ class WorksheetSetup(KiCadObject):
     def from_sexpr(cls, sexpr: SExpr) -> "WorksheetSetup":
         return cls(
             textsize=SExprParser.get_position_with_default(sexpr, "textsize", 1.5, 1.5),
-            linewidth=SExprParser.get_optional_float(sexpr, "linewidth") or 0.15,
-            textlinewidth=SExprParser.get_optional_float(sexpr, "textlinewidth")
-            or 0.15,
-            left_margin=SExprParser.get_optional_float(sexpr, "left_margin") or 10.0,
-            right_margin=SExprParser.get_optional_float(sexpr, "right_margin") or 10.0,
-            top_margin=SExprParser.get_optional_float(sexpr, "top_margin") or 10.0,
-            bottom_margin=SExprParser.get_optional_float(sexpr, "bottom_margin")
-            or 10.0,
+            linewidth=SExprParser.get_required_float(sexpr, "linewidth", default=0.15),
+            textlinewidth=SExprParser.get_required_float(
+                sexpr, "textlinewidth", default=0.15
+            ),
+            left_margin=SExprParser.get_required_float(
+                sexpr, "left_margin", default=10.0
+            ),
+            right_margin=SExprParser.get_required_float(
+                sexpr, "right_margin", default=10.0
+            ),
+            top_margin=SExprParser.get_required_float(
+                sexpr, "top_margin", default=10.0
+            ),
+            bottom_margin=SExprParser.get_required_float(
+                sexpr, "bottom_margin", default=10.0
+            ),
         )
 
     def to_sexpr(self) -> SExpr:

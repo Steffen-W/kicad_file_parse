@@ -68,21 +68,10 @@ class ZoneConnect(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "ZoneConnect":
-        clearance_token = SExprParser.find_token(sexpr, "clearance")
-        min_thickness_token = SExprParser.find_token(sexpr, "min_thickness")
-
         return cls(
-            clearance=(
-                SExprParser.safe_get_float(clearance_token, 1, 0.0)
-                if clearance_token
-                else 0.0
-            ),
-            min_thickness=(
-                SExprParser.safe_float(
-                    SExprParser.get_value(min_thickness_token, 1), 0.0
-                )
-                if min_thickness_token
-                else 0.0
+            clearance=SExprParser.get_required_float(sexpr, "clearance", default=0.0),
+            min_thickness=SExprParser.get_required_float(
+                sexpr, "min_thickness", default=0.0
             ),
         )
 
@@ -226,105 +215,84 @@ class Zone(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "Zone":
-        net_name_token = SExprParser.find_token(sexpr, "net_name")
-        layers_token = SExprParser.find_token(sexpr, "layers")
         hatch_token = SExprParser.find_token(sexpr, "hatch")
         connect_pads_token = SExprParser.find_token(sexpr, "connect_pads")
-        min_thickness_token = SExprParser.find_token(sexpr, "min_thickness")
-        filled_areas_token = SExprParser.find_token(sexpr, "filled_areas_thickness")
         fill_token = SExprParser.find_token(sexpr, "fill")
-        tstamp_token = SExprParser.find_token(sexpr, "tstamp")
-
-        # Parse layers
+        polygon_token = SExprParser.find_token(sexpr, "polygon")
+        layers_token = SExprParser.find_token(sexpr, "layers")
         layers = []
-        if layers_token:
-            for item in layers_token[1:]:
-                if isinstance(item, str):
-                    layers.append(item)
+        if layers_token and len(layers_token) > 1:
+            layers = [
+                str(item)
+                for item in layers_token[1:]
+                if isinstance(item, (str, Symbol))
+            ]
 
-        # Parse hatch settings
+        # Parse hatch settings - simplified with get_required_float defaults
         hatch_thickness = 0.508
         hatch_gap = 0.508
         hatch_orientation = None
-        if hatch_token and len(hatch_token) >= 3:
+        if hatch_token:
             # Check for new format: (hatch (thickness X) (gap Y) (orientation Z))
-            thickness_token = SExprParser.find_token(hatch_token, "thickness")
-            gap_token = SExprParser.find_token(hatch_token, "gap")
-            orientation_token = SExprParser.find_token(hatch_token, "orientation")
+            hatch_thickness = SExprParser.get_required_float(
+                hatch_token, "thickness", default=0.508
+            )
+            hatch_gap = SExprParser.get_required_float(
+                hatch_token, "gap", default=0.508
+            )
+            hatch_orientation = SExprParser.get_optional_float(
+                hatch_token, "orientation"
+            )
 
-            if thickness_token:
-                hatch_thickness = SExprParser.safe_float(
-                    SExprParser.get_value(thickness_token, 1), 0.508
-                )
-            if gap_token:
-                hatch_gap = SExprParser.safe_float(
-                    SExprParser.get_value(gap_token, 1), 0.508
-                )
-            if orientation_token:
-                hatch_orientation = SExprParser.safe_float(
-                    SExprParser.get_value(orientation_token, 1), 0.0
-                )
-
-            # Fallback to old format: (hatch edge THICKNESS GAP)
-            if not thickness_token and len(hatch_token) >= 3:
+            # Fallback to old format: (hatch edge THICKNESS GAP) if no nested tokens found
+            if hatch_thickness == 0.508 and len(hatch_token) >= 3:
                 hatch_thickness = SExprParser.safe_float(hatch_token[2], 0.508)
                 if len(hatch_token) >= 4:
                     hatch_gap = SExprParser.safe_float(hatch_token[3], 0.508)
 
-        # Parse connect pads
-        connect_pads = PadConnection.THERMAL
+        # Parse connect pads - simplified parsing
+        connect_pads = PadConnection.THERMAL  # Default
         connect_pads_clearance = None
         if connect_pads_token and len(connect_pads_token) > 1:
+            # Try to parse connection type from token value
             try:
-                # May be nested like (connect_pads (clearance 0.5))
                 if isinstance(connect_pads_token[1], list):
-                    connect_pads = PadConnection.THERMAL  # Default
-                    # Extract clearance from nested token
-                    clearance_token = SExprParser.find_token(
+                    # Nested format like (connect_pads (clearance 0.5))
+                    connect_pads_clearance = SExprParser.get_optional_float(
                         connect_pads_token, "clearance"
                     )
-                    if clearance_token:
-                        connect_pads_clearance = SExprParser.safe_float(
-                            SExprParser.get_value(clearance_token, 1), 0.0
-                        )
                 else:
+                    # Direct format like (connect_pads thermal)
                     connect_pads = PadConnection(str(connect_pads_token[1]))
-            except ValueError:
-                connect_pads = PadConnection.THERMAL
+            except (ValueError, TypeError):
+                pass  # Keep default
 
-        # Parse polygon points (simplified)
+        # Parse polygon points using existing CoordinatePointList parser
         polygon_points = CoordinatePointList()
-        polygon_token = SExprParser.find_token(sexpr, "polygon")
         if polygon_token:
             pts_token = SExprParser.find_token(polygon_token, "pts")
             if pts_token:
                 polygon_points = CoordinatePointList.from_sexpr(pts_token)
 
         return cls(
-            net=SExprParser.get_optional_int(sexpr, "net") or 0,
-            net_name=(
-                str(SExprParser.get_value(net_name_token, 1, ""))
-                if net_name_token
-                else ""
-            ),
+            net=SExprParser.get_required_int(sexpr, "net", default=0),
+            net_name=SExprParser.get_required_str(sexpr, "net_name", default=""),
             layers=layers,
             name=SExprParser.get_optional_str(sexpr, "name"),
             hatch_thickness=hatch_thickness,
             hatch_gap=hatch_gap,
             connect_pads=connect_pads,
             connect_pads_clearance=connect_pads_clearance,
-            min_thickness=(
-                SExprParser.safe_float(
-                    SExprParser.get_value(min_thickness_token, 1), 0.254
-                )
-                if min_thickness_token
-                else 0.254
+            min_thickness=SExprParser.get_required_float(
+                sexpr, "min_thickness", default=0.254
             ),
             filled_areas_thickness=(
-                cls._parse_filled_areas_thickness(filled_areas_token)
+                cls._parse_filled_areas_thickness(
+                    SExprParser.find_token(sexpr, "filled_areas_thickness")
+                )
             ),
             keepout=SExprParser.has_symbol(sexpr, "keepout"),
-            uuid=UUID.from_sexpr(tstamp_token) if tstamp_token else UUID(""),
+            uuid=UUID.from_sexpr(SExprParser.find_token(sexpr, "tstamp")),
             fill_settings=cls._create_zone_fill_settings(fill_token, hatch_orientation),
             polygon_points=polygon_points,
         )

@@ -21,13 +21,13 @@ from typing import Dict, List, Tuple
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from examples.file_comparison import compare_files_comprehensive
 from kicad_parser import load_kicad_file, save_kicad_file
 from kicad_parser.file_comparison_utils import (
-    KiCadFileType, 
+    ComparisonResult,
+    KiCadFileType,
     detect_kicad_file_type,
-    ComparisonResult
 )
-from examples.file_comparison import compare_files_comprehensive
 
 
 def find_test_files() -> List[Tuple[str, KiCadFileType]]:

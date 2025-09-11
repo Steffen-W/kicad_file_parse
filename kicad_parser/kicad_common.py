@@ -352,6 +352,15 @@ class SExprParser:
         return Position(x, y)
 
     @staticmethod
+    def get_optional_bool_flag(sexpr: SExpr, symbol_name: str) -> Optional[bool]:
+        """Get optional boolean flag from symbol presence.
+
+        Returns:
+            True if symbol exists in sexpr, None if it doesn't
+        """
+        return True if SExprParser.has_symbol(sexpr, symbol_name) else None
+
+    @staticmethod
     def get_required_position(
         sexpr: SExpr, token_name: str, default: Optional["Position"] = None
     ) -> "Position":
@@ -410,7 +419,7 @@ class Position:
     z: Optional[float] = None  # For 3D coordinates (xyz format)
 
     @classmethod
-    def from_sexpr(cls, sexpr: SExpr) -> "Position":
+    def from_sexpr(cls, sexpr: Optional[SExpr]) -> "Position":
         # Handle different formats: (at X Y [ANGLE]) and (xyz X Y Z)
         if not sexpr or len(sexpr) < 2:
             return cls()
@@ -540,9 +549,11 @@ class Stroke:
                 self.type = StrokeType.SOLID
 
     @classmethod
-    def from_sexpr(cls, sexpr: SExpr) -> "Stroke":
+    def from_sexpr(cls, sexpr: Optional[SExpr]) -> "Stroke":
+        if sexpr is None:
+            return cls()
         return cls(
-            width=SExprParser.get_optional_float(sexpr, "width") or 0.254,
+            width=SExprParser.get_required_float(sexpr, "width", default=0.254),
             type=SExprParser.parse_enum(
                 SExprParser.get_optional_str(sexpr, "type"),
                 StrokeType,
@@ -701,7 +712,7 @@ class Fill:
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "Fill":
-        type_str = SExprParser.get_optional_str(sexpr, "type") or "none"
+        type_str = SExprParser.get_required_str(sexpr, "type", default="none")
         try:
             fill_type = FillType(type_str)
         except ValueError:
@@ -733,13 +744,7 @@ class Property:
         )
 
         # Parse optional attributes
-        id_token = SExprParser.find_token(sexpr, "id")
-        id_val = None
-        if id_token:
-            try:
-                id_val = int(SExprParser.get_value(id_token, 1))
-            except (ValueError, TypeError):
-                pass
+        id_val = SExprParser.get_optional_int(sexpr, "id")
 
         at_token = SExprParser.find_token(sexpr, "at")
         position = Position.from_sexpr(at_token) if at_token else None
@@ -773,7 +778,9 @@ class UUID:
     uuid: str
 
     @classmethod
-    def from_sexpr(cls, sexpr: SExpr) -> "UUID":
+    def from_sexpr(cls, sexpr: Optional[SExpr]) -> "UUID":
+        if sexpr is None:
+            return cls(uuid="")
         return cls(uuid=str(SExprParser.get_value(sexpr, 1, "")))
 
     def to_sexpr(self) -> SExpr:
@@ -906,11 +913,6 @@ class TitleBlock:
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "TitleBlock":
-        title_token = SExprParser.find_token(sexpr, "title")
-        date_token = SExprParser.find_token(sexpr, "date")
-        rev_token = SExprParser.find_token(sexpr, "rev")
-        company_token = SExprParser.find_token(sexpr, "company")
-
         comments = {}
         comment_tokens = SExprParser.find_all_tokens(sexpr, "comment")
         for token in comment_tokens:
@@ -918,12 +920,10 @@ class TitleBlock:
                 comments[int(token[1])] = str(token[2])
 
         return cls(
-            title=str(SExprParser.get_value(title_token, 1)) if title_token else "",
-            date=str(SExprParser.get_value(date_token, 1)) if date_token else "",
-            revision=str(SExprParser.get_value(rev_token, 1)) if rev_token else "",
-            company=(
-                str(SExprParser.get_value(company_token, 1)) if company_token else ""
-            ),
+            title=SExprParser.get_required_str(sexpr, "title", default=""),
+            date=SExprParser.get_required_str(sexpr, "date", default=""),
+            revision=SExprParser.get_required_str(sexpr, "rev", default=""),
+            company=SExprParser.get_required_str(sexpr, "company", default=""),
             comments=comments,
         )
 
@@ -964,17 +964,14 @@ class Image:
     def from_sexpr(cls, sexpr: SExpr) -> "Image":
         # Find position (at token)
         at_token = SExprParser.find_token(sexpr, "at")
-        scale_token = SExprParser.find_token(sexpr, "scale")
-        layer_token = SExprParser.find_token(sexpr, "layer")
         uuid_token = SExprParser.find_token(sexpr, "uuid")
-        data_token = SExprParser.find_token(sexpr, "data")
 
         return cls(
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
-            scale=SExprParser.get_value(scale_token, 1) if scale_token else None,
-            layer=SExprParser.get_value(layer_token, 1) if layer_token else None,
+            position=Position.from_sexpr(at_token),
+            scale=SExprParser.get_optional_float(sexpr, "scale"),
+            layer=SExprParser.get_optional_str(sexpr, "layer"),
             uuid=UUID.from_sexpr(uuid_token) if uuid_token else None,
-            data=SExprParser.get_value(data_token, 1) if data_token else None,
+            data=SExprParser.get_optional_str(sexpr, "data"),
         )
 
     def to_sexpr(self) -> SExpr:

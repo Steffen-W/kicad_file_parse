@@ -118,7 +118,7 @@ class DimensionFormat:
             suffix=SExprParser.get_optional_str(sexpr, "suffix"),
             units=units,
             units_format=units_format,
-            precision=SExprParser.get_optional_int(sexpr, "precision") or 2,
+            precision=SExprParser.get_required_int(sexpr, "precision", default=2),
             override_value=SExprParser.get_optional_str(sexpr, "override_value"),
             suppress_zeros=(
                 SExprParser.get_value(suppress_zeros_token, 1) == Symbol("yes")
@@ -162,8 +162,6 @@ class DimensionStyle:
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "DimensionStyle":
-        thickness_token = SExprParser.find_token(sexpr, "thickness")
-        arrow_length_token = SExprParser.find_token(sexpr, "arrow_length")
         text_position_mode_token = SExprParser.find_token(sexpr, "text_position_mode")
         arrow_direction_token = SExprParser.find_token(sexpr, "arrow_direction")
         text_frame_token = SExprParser.find_token(sexpr, "text_frame")
@@ -198,25 +196,19 @@ class DimensionStyle:
                 text_frame = TextFrameType.NONE
 
         return cls(
-            thickness=SExprParser.safe_float(
-                SExprParser.get_value(thickness_token, 1) if thickness_token else None,
-                0.15,
-            ),
-            arrow_length=SExprParser.safe_float(
-                (
-                    SExprParser.get_value(arrow_length_token, 1)
-                    if arrow_length_token
-                    else None
-                ),
-                1.27,
+            thickness=SExprParser.get_required_float(sexpr, "thickness", default=0.15),
+            arrow_length=SExprParser.get_required_float(
+                sexpr, "arrow_length", default=1.27
             ),
             text_position_mode=text_position_mode,
             arrow_direction=arrow_direction,
-            extension_height=SExprParser.get_optional_float(sexpr, "extension_height")
-            or 1.27,
+            extension_height=SExprParser.get_required_float(
+                sexpr, "extension_height", default=1.27
+            ),
             text_frame=text_frame,
-            extension_offset=SExprParser.get_optional_float(sexpr, "extension_offset")
-            or 0.5,
+            extension_offset=SExprParser.get_required_float(
+                sexpr, "extension_offset", default=0.5
+            ),
             keep_text_aligned=SExprParser.has_symbol(sexpr, "keep_text_aligned"),
         )
 
@@ -274,7 +266,7 @@ class GraphicalText(KiCadObject):
 
         # Parse position with angle support
         at_token = SExprParser.find_token(sexpr, "at")
-        position = Position.from_sexpr(at_token) if at_token else Position(0, 0)
+        position = Position.from_sexpr(at_token)
 
         return cls(
             text=text,
@@ -615,7 +607,7 @@ class Dimension(KiCadObject):
                 dim_type = DimensionType.ALIGNED
 
         return cls(
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
             type=dim_type,
             layer=(
                 str(SExprParser.get_value(layer_token, 1, "Dwgs.User"))
@@ -734,7 +726,7 @@ class GraphicalTextBox(KiCadObject):
             end_pos = Position(center_pos.x + width / 2, center_pos.y + height / 2)
 
         return cls(
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
             text=text,
             start=start_pos,
             end=end_pos,

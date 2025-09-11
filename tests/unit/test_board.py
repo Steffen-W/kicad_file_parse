@@ -1023,14 +1023,16 @@ class TestCustomPadOptions:
         with pytest.raises(ValueError):
             CustomPadOptions.from_sexpr(sexpr_invalid_anchor)
 
-        # Test with malformed tokens (IndexError case)
+        # Test with malformed tokens (should use default values gracefully)
         sexpr_malformed = [
             Symbol("options"),
             [Symbol("clearance")],  # Missing value
             [Symbol("anchor")],  # Missing value
         ]
-        with pytest.raises(IndexError):
-            CustomPadOptions.from_sexpr(sexpr_malformed)
+        result_malformed = CustomPadOptions.from_sexpr(sexpr_malformed)
+        # Should use default values when tokens are malformed
+        assert result_malformed.clearance == CustomPadClearanceType.OUTLINE
+        assert result_malformed.anchor == CustomPadAnchorShape.RECT
 
     def test_custom_pad_options_round_trip(self):
         """Test round-trip conversion: object -> sexpr -> object."""
@@ -1205,21 +1207,21 @@ class TestFootprintOptionsExtended:
 
     def test_footprint_options_error_handling(self):
         """Test FootprintOptions error handling for malformed data."""
-        # Test with malformed clearance token
+        # Test with malformed clearance token (should handle gracefully)
         sexpr_bad_clearance = [
             Symbol("options"),
             [Symbol("clearance")],  # Missing value
         ]
-        with pytest.raises(IndexError):
-            FootprintOptions.from_sexpr(sexpr_bad_clearance)
+        result_bad_clearance = FootprintOptions.from_sexpr(sexpr_bad_clearance)
+        assert result_bad_clearance.clearance is None
 
-        # Test with malformed anchor token
+        # Test with malformed anchor token (should handle gracefully)
         sexpr_bad_anchor = [
             Symbol("options"),
             [Symbol("anchor")],  # Missing value
         ]
-        with pytest.raises(IndexError):
-            FootprintOptions.from_sexpr(sexpr_bad_anchor)
+        result_bad_anchor = FootprintOptions.from_sexpr(sexpr_bad_anchor)
+        assert result_bad_anchor.anchor is None
 
 
 class TestFootprintPrimitivesExtended:

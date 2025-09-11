@@ -68,7 +68,9 @@ class GeneralSettings(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "GeneralSettings":
-        return cls(thickness=SExprParser.get_optional_float(sexpr, "thickness") or 1.6)
+        return cls(
+            thickness=SExprParser.get_required_float(sexpr, "thickness", default=1.6)
+        )
 
     def to_sexpr(self) -> SExpr:
         return [Symbol("general"), [Symbol("thickness"), self.thickness]]
@@ -163,10 +165,9 @@ class BoardSetup(KiCadObject):
                 default_zone_connection = PadConnection.THERMAL
 
         return cls(
-            pad_to_mask_clearance=SExprParser.get_optional_float(
-                sexpr, "pad_to_mask_clearance"
-            )
-            or 0.0,
+            pad_to_mask_clearance=SExprParser.get_required_float(
+                sexpr, "pad_to_mask_clearance", default=0.0
+            ),
             solder_mask_min_width=SExprParser.get_optional_float(
                 sexpr, "solder_mask_min_width"
             ),
@@ -262,7 +263,6 @@ class TrackSegment(KiCadObject):
     def from_sexpr(cls, sexpr: SExpr) -> "TrackSegment":
         start_token = SExprParser.find_token(sexpr, "start")
         end_token = SExprParser.find_token(sexpr, "end")
-        width_token = SExprParser.find_token(sexpr, "width")
         tstamp_token = SExprParser.find_token(sexpr, "tstamp")
 
         start = (0.0, 0.0)
@@ -282,13 +282,11 @@ class TrackSegment(KiCadObject):
         return cls(
             start=start,
             end=end,
-            width=(
-                SExprParser.safe_get_float(width_token, 1, 0.0) if width_token else 0.0
-            ),
-            layer=SExprParser.get_optional_str(sexpr, "layer") or "",
-            net=SExprParser.get_optional_int(sexpr, "net") or 0,
-            uuid=UUID.from_sexpr(tstamp_token) if tstamp_token else UUID(""),
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            width=SExprParser.get_required_float(sexpr, "width", default=0.0),
+            layer=SExprParser.get_required_str(sexpr, "layer", default=""),
+            net=SExprParser.get_required_int(sexpr, "net", default=0),
+            uuid=UUID.from_sexpr(tstamp_token),
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -323,8 +321,6 @@ class TrackVia(KiCadObject):
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "TrackVia":
         at_token = SExprParser.find_token(sexpr, "at")
-        size_token = SExprParser.find_token(sexpr, "size")
-        drill_token = SExprParser.find_token(sexpr, "drill")
         layers_token = SExprParser.find_token(sexpr, "layers")
         tstamp_token = SExprParser.find_token(sexpr, "tstamp")
 
@@ -346,24 +342,20 @@ class TrackVia(KiCadObject):
 
         return cls(
             position=position,
-            size=(
-                SExprParser.safe_get_float(size_token, 1, 0.0) if size_token else 0.0
-            ),
-            drill=(
-                SExprParser.safe_get_float(drill_token, 1, 0.0) if drill_token else 0.0
-            ),
+            size=SExprParser.get_required_float(sexpr, "size", default=0.0),
+            drill=SExprParser.get_required_float(sexpr, "drill", default=0.0),
             layers=layers,
-            net=SExprParser.get_optional_int(sexpr, "net") or 0,
-            uuid=UUID.from_sexpr(tstamp_token) if tstamp_token else UUID(""),
+            net=SExprParser.get_required_int(sexpr, "net", default=0),
+            uuid=UUID.from_sexpr(tstamp_token),
             via_type=via_type,
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
             remove_unused_layers=(
-                True if SExprParser.has_symbol(sexpr, "remove_unused_layers") else None
+                SExprParser.get_optional_bool_flag(sexpr, "remove_unused_layers")
             ),
             keep_end_layers=(
-                True if SExprParser.has_symbol(sexpr, "keep_end_layers") else None
+                SExprParser.get_optional_bool_flag(sexpr, "keep_end_layers")
             ),
-            free=True if SExprParser.has_symbol(sexpr, "free") else None,
+            free=SExprParser.get_optional_bool_flag(sexpr, "free"),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -410,7 +402,6 @@ class TrackArc(KiCadObject):
         start_token = SExprParser.find_token(sexpr, "start")
         mid_token = SExprParser.find_token(sexpr, "mid")
         end_token = SExprParser.find_token(sexpr, "end")
-        width_token = SExprParser.find_token(sexpr, "width")
         tstamp_token = SExprParser.find_token(sexpr, "tstamp")
 
         start = (0.0, 0.0)
@@ -438,13 +429,11 @@ class TrackArc(KiCadObject):
             start=start,
             mid=mid,
             end=end,
-            width=(
-                SExprParser.safe_get_float(width_token, 1, 0.0) if width_token else 0.0
-            ),
-            layer=SExprParser.get_optional_str(sexpr, "layer") or "",
-            net=SExprParser.get_optional_int(sexpr, "net") or 0,
-            uuid=UUID.from_sexpr(tstamp_token) if tstamp_token else UUID(""),
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            width=SExprParser.get_required_float(sexpr, "width", default=0.0),
+            layer=SExprParser.get_required_str(sexpr, "layer", default=""),
+            net=SExprParser.get_required_int(sexpr, "net", default=0),
+            uuid=UUID.from_sexpr(tstamp_token),
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
             tstamp=(
                 str(tstamp_token[1]) if tstamp_token and len(tstamp_token) > 1 else None
             ),
@@ -488,9 +477,9 @@ class Group(KiCadObject):
 
         return cls(
             name=name,
-            uuid=UUID.from_sexpr(uuid_token) if uuid_token else UUID(""),
+            uuid=UUID.from_sexpr(uuid_token),
             members=members,
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
         )
 
     def to_sexpr(self) -> SExpr:

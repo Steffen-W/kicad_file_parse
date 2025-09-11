@@ -158,18 +158,10 @@ class FootprintOptions(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "FootprintOptions":
-        clearance_token = SExprParser.find_token(sexpr, "clearance")
-        anchor_token = SExprParser.find_token(sexpr, "anchor")
-
-        clearance = None
-        if clearance_token:
-            clearance = str(clearance_token[1])
-
-        anchor = None
-        if anchor_token:
-            anchor = str(anchor_token[1])
-
-        return cls(clearance=clearance, anchor=anchor)
+        return cls(
+            clearance=SExprParser.get_optional_str(sexpr, "clearance"),
+            anchor=SExprParser.get_optional_str(sexpr, "anchor"),
+        )
 
     def to_sexpr(self) -> SExpr:
         result: SExpr = [Symbol("options")]
@@ -189,16 +181,19 @@ class CustomPadOptions(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "CustomPadOptions":
-        clearance_token = SExprParser.find_token(sexpr, "clearance")
-        anchor_token = SExprParser.find_token(sexpr, "anchor")
+        clearance_str = SExprParser.get_optional_str(sexpr, "clearance")
+        anchor_str = SExprParser.get_optional_str(sexpr, "anchor")
 
-        clearance = CustomPadClearanceType.OUTLINE
-        if clearance_token:
-            clearance = CustomPadClearanceType(str(clearance_token[1]))
-
-        anchor = CustomPadAnchorShape.RECT
-        if anchor_token:
-            anchor = CustomPadAnchorShape(str(anchor_token[1]))
+        clearance = (
+            CustomPadClearanceType(clearance_str)
+            if clearance_str
+            else CustomPadClearanceType.OUTLINE
+        )
+        anchor = (
+            CustomPadAnchorShape(anchor_str)
+            if anchor_str
+            else CustomPadAnchorShape.RECT
+        )
 
         return cls(clearance=clearance, anchor=anchor)
 
@@ -234,12 +229,9 @@ class FootprintPrimitives(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "FootprintPrimitives":
-        fill_token = SExprParser.find_token(sexpr, "fill")
-
         width = SExprParser.get_optional_float(sexpr, "width")
-        fill = None
-        if fill_token is not None:
-            fill = str(SExprParser.get_value(fill_token, 1, "")) == "yes"
+        fill_value = SExprParser.get_optional_str(sexpr, "fill")
+        fill = fill_value == "yes" if fill_value is not None else None
 
         primitives = cls(width=width, fill=fill)
 
@@ -292,13 +284,8 @@ class CustomPadPrimitives(KiCadObject):
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "CustomPadPrimitives":
-        fill_token = SExprParser.find_token(sexpr, "fill")
-
-        width = SExprParser.get_optional_float(sexpr, "width") or 0.15
-        fill = (
-            fill_token is not None
-            and str(SExprParser.get_value(fill_token, 1, "")) == "yes"
-        )
+        width = SExprParser.get_required_float(sexpr, "width", default=0.15)
+        fill = SExprParser.get_optional_str(sexpr, "fill") == "yes"
 
         primitives = cls(width=width, fill=fill)
 
@@ -374,7 +361,7 @@ class FootprintText(GraphicalText):
 
         # Parse position with angle support
         at_token = SExprParser.find_token(sexpr, "at")
-        position = Position.from_sexpr(at_token) if at_token else Position(0, 0)
+        position = Position.from_sexpr(at_token)
 
         return cls(
             type=text_type,
@@ -388,8 +375,8 @@ class FootprintText(GraphicalText):
                 if effects_token
                 else TextEffects()
             ),
-            unlocked=True if SExprParser.has_symbol(sexpr, "unlocked") else None,
-            hide=True if SExprParser.has_symbol(sexpr, "hide") else None,
+            unlocked=SExprParser.get_optional_bool_flag(sexpr, "unlocked"),
+            hide=SExprParser.get_optional_bool_flag(sexpr, "hide"),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -420,7 +407,7 @@ class FootprintLine(GraphicalLine):
             layer=base.layer,
             stroke=base.stroke,
             uuid=base.uuid,
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -452,7 +439,7 @@ class FootprintRectangle(GraphicalRectangle):
             stroke=base.stroke,
             fill=base.fill,
             uuid=base.uuid,
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
         )
 
     def to_sexpr(self) -> SExpr:
@@ -811,8 +798,8 @@ class FootprintPad(KiCadObject):
             number=number,
             type=pad_type,
             shape=shape,
-            position=Position.from_sexpr(at_token) if at_token else Position(0, 0),
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
+            position=Position.from_sexpr(at_token),
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
             size=size,
             drill=DrillDefinition.from_sexpr(drill_token) if drill_token else None,
             layers=layers,
@@ -1127,11 +1114,9 @@ class FootprintGroup(KiCadObject):
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "FootprintGroup":
         name = SExprParser.safe_get_str(sexpr, 1, "")
-        id_token = SExprParser.find_token(sexpr, "id")
-
         group = cls(
             name=name,
-            id=(str(id_token[1]) if id_token and len(id_token) > 1 else None),
+            id=SExprParser.get_optional_str(sexpr, "id"),
         )
 
         # Parse member UUIDs
@@ -1220,20 +1205,16 @@ class Model3D(KiCadObject):
         rotate_token = SExprParser.find_token(sexpr, "rotate")
         offset_token = SExprParser.find_token(sexpr, "offset")
         hide = SExprParser.has_symbol(sexpr, "hide")
-        opacity_token = SExprParser.find_token(sexpr, "opacity")
-
-        at = Position() if not at_token else Position.from_sexpr(at_token)
+        at = Position.from_sexpr(at_token)
         scale = (
             Position(x=1, y=1, z=1)
             if not scale_token
             else Position.from_sexpr(scale_token)
         )
-        rotate = Position() if not rotate_token else Position.from_sexpr(rotate_token)
+        rotate = Position.from_sexpr(rotate_token)
         offset = None if not offset_token else Position.from_sexpr(offset_token)
 
-        opacity = None
-        if opacity_token:
-            opacity = SExprParser.get_optional_float(sexpr, "opacity")
+        opacity = SExprParser.get_optional_float(sexpr, "opacity")
 
         return cls(
             filename=filename,
@@ -1303,7 +1284,6 @@ class Footprint3DModel:
 
         # Advanced 3D model features
         hide_token = SExprParser.find_token(sexpr, "hide")
-        opacity_token = SExprParser.find_token(sexpr, "opacity")
         offset_token = SExprParser.find_token(sexpr, "offset")
 
         # Parse 3D positions (xyz format)
@@ -1327,11 +1307,7 @@ class Footprint3DModel:
 
         # Parse advanced features
         hide = hide_token is not None
-        opacity = (
-            SExprParser.safe_float(SExprParser.get_value(opacity_token, 1))
-            if opacity_token
-            else None
-        )
+        opacity = SExprParser.get_optional_float(sexpr, "opacity")
 
         offset_pos = None
         if offset_token:
@@ -1422,20 +1398,12 @@ class Footprint(KiCadObject):
 
         # Parse position
         at_token = SExprParser.find_token(sexpr, "at")
-        position = Position() if not at_token else Position.from_sexpr(at_token)
+        position = Position.from_sexpr(at_token)
 
         # Parse basic attributes
-        locked = (
-            SExprParser.has_symbol(sexpr, "locked")
-            if SExprParser.find_token(sexpr, "locked")
-            else None
-        )
-        placed = (
-            SExprParser.has_symbol(sexpr, "placed")
-            if SExprParser.find_token(sexpr, "placed")
-            else None
-        )
-        layer = SExprParser.get_optional_str(sexpr, "layer") or "F.Cu"
+        locked = SExprParser.get_optional_bool_flag(sexpr, "locked")
+        placed = SExprParser.get_optional_bool_flag(sexpr, "placed")
+        layer = SExprParser.get_required_str(sexpr, "layer", default="F.Cu")
 
         # Parse UUID
         uuid = None
@@ -1553,9 +1521,9 @@ class KiCadFootprint(KiCadObject):
 
         footprint = cls(
             library_link=library_link,
-            locked=True if SExprParser.has_symbol(sexpr, "locked") else None,
-            placed=True if SExprParser.has_symbol(sexpr, "placed") else None,
-            layer=SExprParser.get_optional_str(sexpr, "layer") or "F.Cu",
+            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
+            placed=SExprParser.get_optional_bool_flag(sexpr, "placed"),
+            layer=SExprParser.get_required_str(sexpr, "layer", default="F.Cu"),
             tedit=SExprParser.get_optional_str(sexpr, "tedit"),
             uuid=UUID.from_sexpr(uuid_token) if uuid_token else None,
             position=Position.from_sexpr(at_token) if at_token else None,
