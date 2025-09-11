@@ -692,6 +692,7 @@ The `examples/` directory contains complete working examples:
 - `schematic_example.py` - Creating comprehensive schematics with all element types
 - `pcb_example.py` - Creating PCBs with layers, nets, tracks, and vias
 - `file_comparison.py` - Comprehensive utility for comparing KiCad files
+- `round_trip_test.py` - Parser accuracy validation through round-trip testing
 
 ### File Comparison Tool
 
@@ -733,6 +734,25 @@ for method, result in results.items():
 - `compare_files_text()` → Text-based comparison with whitespace options
 - `compare_files_comprehensive()` → All methods with detailed output
 
+### Round-Trip Test
+
+Validates parser accuracy by loading and re-saving KiCad files, then comparing the results:
+
+```bash
+# Run comprehensive accuracy test
+python examples/round_trip_test.py
+
+# Output shows parser fidelity:
+# ROUND-TRIP TEST SUMMARY
+# Accuracy Results:
+#    Exact Match: 1/22 perfect (4.5%), avg similarity: 9.1%
+#    Structural: 20/22 perfect (90.9%), avg similarity: 97.2%
+#    Text (with whitespace): 1/22 perfect (4.5%), avg similarity: 9.1%
+#    Text (normalized): 1/22 perfect (4.5%), avg similarity: 16.2%
+```
+
+This example demonstrates the high fidelity of the KiCad parser by testing all files in `examples/test_data/` and reporting conversion accuracy statistics.
+
 Run examples:
 
 ```bash
@@ -743,6 +763,7 @@ python file_conversion.py
 python worksheet_example.py
 python schematic_example.py
 python file_comparison.py  # Runs demo automatically
+python round_trip_test.py  # Validates parser accuracy
 ```
 
 ## Development
