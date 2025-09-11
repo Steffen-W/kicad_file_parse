@@ -165,7 +165,7 @@ group_id = generate_UUID()
 symbol_uuid = generate_UUID()
 ```
 
-**Note**: UUIDs are no longer generated automatically. Always use `generate_UUID()` when creating objects that require unique identifiers.
+**Note**: UUIDs are not generated automatically. Always use `generate_UUID()` when creating objects that require unique identifiers.
 
 ### Working with Schematics
 
@@ -691,6 +691,47 @@ The `examples/` directory contains complete working examples:
 - `worksheet_example.py` - Creating custom worksheets and page layouts
 - `schematic_example.py` - Creating comprehensive schematics with all element types
 - `pcb_example.py` - Creating PCBs with layers, nets, tracks, and vias
+- `file_comparison.py` - Comprehensive utility for comparing KiCad files
+
+### File Comparison Tool
+
+A comprehensive utility for comparing KiCad files with multiple comparison modes and built-in demo functionality:
+
+#### Comparison Modes
+
+- **Exact Comparison**: Files must be completely identical (content, order, formatting)
+- **Structural Comparison**: Same content, order doesn't matter (uses KiCad parser for semantic comparison)
+- **Text Comparison**: Plain text comparison with optional whitespace normalization
+- **Comprehensive Comparison**: Runs all methods and shows detailed results with similarity scores
+
+#### Usage
+
+```bash
+# Command line usage
+python examples/file_comparison.py file1.kicad_sch file2.kicad_sch
+
+# Run without arguments to see interactive demo
+python examples/file_comparison.py
+
+# Programmatic usage
+from examples.file_comparison import compare_files_exact, compare_files_structural
+from kicad_parser.file_comparison_utils import ComparisonResult
+
+result = compare_files_exact("file1.kicad_sch", "file2.kicad_sch")
+print(f"Equal: {result.are_equal}, Similarity: {result.similarity_score:.2%}")
+
+# Comprehensive comparison with detailed output
+results = compare_files_comprehensive("original.kicad_sch", "modified.kicad_sch")
+for method, result in results.items():
+    print(f"{method}: {result}")
+```
+
+#### Available Functions
+
+- `compare_files_exact()` → Perfect match comparison
+- `compare_files_structural()` → Semantic content comparison  
+- `compare_files_text()` → Text-based comparison with whitespace options
+- `compare_files_comprehensive()` → All methods with detailed output
 
 Run examples:
 
@@ -701,6 +742,7 @@ python create_symbol.py
 python file_conversion.py
 python worksheet_example.py
 python schematic_example.py
+python file_comparison.py  # Runs demo automatically
 ```
 
 ## Development

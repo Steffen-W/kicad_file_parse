@@ -20,6 +20,10 @@ __version__ = "1.0.0"
 __author__ = "Steffen-W"
 __email__ = "your.email@example.com"
 
+from .file_comparison_utils import (
+    KiCadFileType,
+    detect_kicad_file_type,
+)
 from .kicad_board import (
     DrillDefinition,
     Footprint3DModel,
@@ -112,7 +116,6 @@ from .kicad_main import (
     create_basic_footprint,
     create_basic_symbol,
     create_basic_worksheet,
-    detect_kicad_file_type,
     example_footprint_creation,
     example_symbol_creation,
     load_any_kicad_file,
@@ -189,6 +192,9 @@ from .kicad_worksheet import (
 __all__ = [
     # Version info
     "__version__",
+    # File comparison utilities
+    "KiCadFileType",
+    "detect_kicad_file_type",
     # Common classes
     "KiCadObject",
     "Position",
