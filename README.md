@@ -790,6 +790,17 @@ pytest --cov=kicad_parser --cov-report=html
 pytest --cov=kicad_parser --cov-report=term-missing
 ```
 
+### Documentation
+
+Generate API documentation with Sphinx:
+
+```bash
+pip install -e .[docs]
+python docs/build-docs.py
+```
+
+Open `docs/_build/html/index.html` in your browser. Use `python docs/build-docs.py pdf` for other formats.
+
 ### Code Quality
 
 ```bash

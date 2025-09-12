@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:gitlab.com)",
+      "Bash(python -m pytest tests/unit/test_worksheet.py -v)",
+      "Bash(python:*)",
+      "WebFetch(domain:dev-docs.kicad.org)",
+      "Bash(flake8:*)",
+      "Bash(find:*)",
+      "Bash(cp:*)",
+      "Bash(pyright:*)",
+      "Bash(mypy:*)",
+      "Bash(sed:*)",
+      "Bash(pytest:*)",
+      "Bash(pip install:*)",
+      "Bash(coverage report:*)",
+      "Bash(sphinx-build:*)",
+      "Bash(sphinx-autogen:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
