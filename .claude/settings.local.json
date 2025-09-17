@@ -15,7 +15,19 @@
       "Bash(pip install:*)",
       "Bash(coverage report:*)",
       "Bash(sphinx-build:*)",
-      "Bash(sphinx-autogen:*)"
+      "Bash(sphinx-autogen:*)",
+      "Bash(PYTHONPATH:*)",
+      "Bash(paste:*)",
+      "Bash(for token in anchor angle at center clearance color diameter effects end fill font height id layer linewidth locked name offset pos radius size start stroke style text thickness title tstamp type units uuid visible width xyz pts)",
+      "Bash(do if [ ! -f \"/home/steffen/MechIC_local/git_privat/kicad_file_parse/doc/parsed/text/$token.txt\" ])",
+      "Bash(do)",
+      "Bash(if [ ! -f \"/home/steffen/MechIC_local/git_privat/kicad_file_parse/doc/parsed/text/$token.txt\" ])",
+      "Bash(then)",
+      "Bash(echo:*)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(black:*)"
     ],
     "deny": [],
     "ask": []

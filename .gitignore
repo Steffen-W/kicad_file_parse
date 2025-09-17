@@ -1,5 +1,6 @@
 # Created by https://gitignore.org
 # Python.gitignore
+doc/parsed/text/*.txt
 
 # Project specific
 temp_*

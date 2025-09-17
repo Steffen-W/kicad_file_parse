@@ -56,15 +56,27 @@ from .kicad_common import (
     Fill,
     FillType,
     Font,
+    FontDefinition,
+    FootprintLine,
+    FootprintText,
+    FootprintTextBox,
+    FootprintTextType,
     Image,
+    JustifyHorizontal,
+    JustifyVertical,
     KiCadObject,
+    Layer,
     PageSettings,
     Position,
+    PositionIdentifier,
     Property,
     Stroke,
+    StrokeDefinition,
     StrokeType,
     TextEffects,
+    TextEffectsDefinition,
     TitleBlock,
+    XYCoordinate,
     sexpr_to_str,
     str_to_sexpr,
 )
@@ -198,16 +210,28 @@ __all__ = [
     # Common classes
     "KiCadObject",
     "Position",  # Symbol("at") or Symbol("xyz")
+    "PositionIdentifier",  # Symbol("at")
     "CoordinatePoint",  # Symbol("xy")
     "CoordinatePointList",  # Symbol("pts")
-    "Stroke",  # Symbol("stroke")
+    "XYCoordinate",  # Symbol("xy")
+    "Stroke",  # Backward compatibility alias
+    "StrokeDefinition",  # Symbol("stroke")
     "StrokeType",
     "Fill",  # Symbol("fill")
     "FillType",
-    "TextEffects",  # Symbol("effects")
+    "TextEffects",  # Backward compatibility alias
+    "TextEffectsDefinition",  # Symbol("effects")
+    "Font",  # Backward compatibility alias
+    "FontDefinition",  # Symbol("font")
+    "FootprintLine",  # Symbol("fp_line")
+    "FootprintText",  # Symbol("fp_text")
+    "FootprintTextBox",  # Symbol("fp_text_box")
+    "FootprintTextType",
+    "JustifyHorizontal",
+    "JustifyVertical",
+    "Layer",  # Symbol("layer")
     "UUID",  # Symbol("tstamp") or Symbol("uuid")
     "Property",  # Symbol("property")
-    "Font",  # Symbol("font")
     "PageSettings",  # Symbol("page")
     "TitleBlock",  # Symbol("title_block")
     "Image",  # Symbol("image")

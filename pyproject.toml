@@ -125,6 +125,10 @@ strict_equality = true
 module = "kicad_parser.sexpdata"
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = "kicad_parserv2.sexpdata"
+ignore_errors = true
+
 [tool.pyright]
 include = [
     "kicad_parser",
@@ -135,6 +139,7 @@ exclude = [
     "tests"
 ]
 ignore = [
-    "kicad_parser/sexpdata.py"
+    "kicad_parser/sexpdata.py",
+    "kicad_parserv2/sexpdata.py"
 ]
 

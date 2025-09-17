@@ -19,8 +19,9 @@ from .kicad_common import (
     Property,
     SExpr,
     SExprParser,
+    StrokeDefinition,
     Symbol,
-    TextEffects,
+    TextEffectsDefinition,
     parse_kicad_file,
     write_kicad_file,
 )
@@ -371,9 +372,9 @@ class FootprintText(GraphicalText):
             knockout=knockout,
             uuid=UUID.from_sexpr(uuid_token) if uuid_token else None,
             effects=(
-                TextEffects.from_sexpr(effects_token)
+                TextEffectsDefinition.from_sexpr(effects_token)
                 if effects_token
-                else TextEffects()
+                else TextEffectsDefinition()
             ),
             unlocked=SExprParser.get_optional_bool_flag(sexpr, "unlocked"),
             hide=SExprParser.get_optional_bool_flag(sexpr, "hide"),
@@ -424,37 +425,105 @@ class FootprintLine(GraphicalLine):
 
 
 @dataclass
-class FootprintRectangle(GraphicalRectangle):
-    """Footprint rectangle - uses fp_rect token"""
+class FootprintRectangle(KiCadObject):
+    """Footprint rectangle definition.
 
-    locked: Optional[bool] = None
+    The 'fp_rect' token defines a graphic rectangle in a footprint definition in the format:
+    (fp_rect
+        (start X Y)
+        (end X Y)
+        (layer LAYER_DEFINITION)
+        (width WIDTH)
+        STROKE_DEFINITION
+        [(fill yes | no)]
+        [(locked)]
+        (uuid UUID)
+    )
+
+    Where:
+        start: Coordinates of the upper left corner of the rectangle
+        end: Coordinates of the lower right corner of the rectangle
+        layer: Canonical layer the rectangle resides on
+        width: Line width of the rectangle (prior to version 7)
+        STROKE_DEFINITION: Line width and style of the rectangle (from version 7)
+        fill: Optional flag defining if the rectangle is filled
+        locked: Optional flag defining if the rectangle cannot be edited
+        uuid: Unique identifier of the rectangle object
+    """
+
+    __token_name__ = "fp_rect"
+
+    start: Position = field(default_factory=Position)
+    end: Position = field(default_factory=Position)
+    layer: Optional[str] = None
+    width: Optional[float] = None
+    stroke: Optional[StrokeDefinition] = None
+    fill: bool = False
+    locked: bool = False
+    uuid: Optional[UUID] = None
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "FootprintRectangle":
-        base = GraphicalRectangle.from_sexpr(sexpr)
+        if not sexpr:
+            return cls()
+
+        start_token = SExprParser.find_token(sexpr, "start")
+        start = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(start_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(start_token, 2)),
+            )
+            if start_token
+            else Position()
+        )
+
+        end_token = SExprParser.find_token(sexpr, "end")
+        end = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(end_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(end_token, 2)),
+            )
+            if end_token
+            else Position()
+        )
+
+        stroke_token = SExprParser.find_token(sexpr, "stroke")
+        stroke = StrokeDefinition.from_sexpr(stroke_token) if stroke_token else None
+
+        fill_token = SExprParser.find_token(sexpr, "fill")
+        fill = False
+        if fill_token and len(fill_token) > 1:
+            fill = str(fill_token[1]) == "yes"
+
+        uuid_token = SExprParser.find_token(sexpr, "uuid")
+        uuid_obj = UUID.from_sexpr(uuid_token) if uuid_token else None
+
         return cls(
-            start=base.start,
-            end=base.end,
-            layer=base.layer,
-            stroke=base.stroke,
-            fill=base.fill,
-            uuid=base.uuid,
-            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
+            start=start,
+            end=end,
+            layer=SExprParser.get_optional_str(sexpr, "layer"),
+            width=SExprParser.get_optional_float(sexpr, "width"),
+            stroke=stroke,
+            fill=fill,
+            locked=SExprParser.has_symbol(sexpr, "locked"),
+            uuid=uuid_obj,
         )
 
     def to_sexpr(self) -> SExpr:
-        result: SExpr = [Symbol("fp_rect")]
+        result: SExpr = [Symbol(self.__token_name__)]
         result.append([Symbol("start"), self.start.x, self.start.y])
         result.append([Symbol("end"), self.end.x, self.end.y])
-        result.append([Symbol("layer"), self.layer])
-        result.append(self.stroke.to_sexpr())
 
+        if self.layer:
+            result.append([Symbol("layer"), self.layer])
+        if self.width is not None:
+            result.append([Symbol("width"), self.width])
+        if self.stroke:
+            result.append(self.stroke.to_sexpr())
         if self.fill:
             result.append([Symbol("fill"), Symbol("yes")])
-
-        if self.locked is not None and self.locked:
+        if self.locked:
             result.append(Symbol("locked"))
-
         if self.uuid:
             result.append(self.uuid.to_sexpr())
 
@@ -462,19 +531,105 @@ class FootprintRectangle(GraphicalRectangle):
 
 
 @dataclass
-class FootprintCircle(GraphicalCircle):
-    """Footprint circle - uses fp_circle token"""
+class FootprintCircle(KiCadObject):
+    """Footprint circle definition.
+
+    The 'fp_circle' token defines a graphic circle in a footprint definition in the format:
+    (fp_circle
+        (center X Y)
+        (end X Y)
+        (layer LAYER_DEFINITION)
+        (width WIDTH)
+        STROKE_DEFINITION
+        [(fill yes | no)]
+        [(locked)]
+        (uuid UUID)
+    )
+
+    Where:
+        center: Coordinates of the center of the circle
+        end: Coordinates of the end of the radius of the circle
+        layer: Canonical layer the circle resides on
+        width: Line width of the circle (prior to version 7)
+        STROKE_DEFINITION: Line width and style of the circle (from version 7)
+        fill: Optional flag defining if the circle is filled
+        locked: Optional flag defining if the circle cannot be edited
+        uuid: Unique identifier of the circle object
+    """
+
+    __token_name__ = "fp_circle"
+
+    center: Position = field(default_factory=Position)
+    end: Position = field(default_factory=Position)
+    layer: Optional[str] = None
+    width: Optional[float] = None
+    stroke: Optional[StrokeDefinition] = None
+    fill: bool = False
+    locked: bool = False
+    uuid: Optional[UUID] = None
+
+    @classmethod
+    def from_sexpr(cls, sexpr: SExpr) -> "FootprintCircle":
+        if not sexpr:
+            return cls()
+
+        center_token = SExprParser.find_token(sexpr, "center")
+        center = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(center_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(center_token, 2)),
+            )
+            if center_token
+            else Position()
+        )
+
+        end_token = SExprParser.find_token(sexpr, "end")
+        end = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(end_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(end_token, 2)),
+            )
+            if end_token
+            else Position()
+        )
+
+        stroke_token = SExprParser.find_token(sexpr, "stroke")
+        stroke = StrokeDefinition.from_sexpr(stroke_token) if stroke_token else None
+
+        fill_token = SExprParser.find_token(sexpr, "fill")
+        fill = False
+        if fill_token and len(fill_token) > 1:
+            fill = str(fill_token[1]) == "yes"
+
+        uuid_token = SExprParser.find_token(sexpr, "uuid")
+        uuid_obj = UUID.from_sexpr(uuid_token) if uuid_token else None
+
+        return cls(
+            center=center,
+            end=end,
+            layer=SExprParser.get_optional_str(sexpr, "layer"),
+            width=SExprParser.get_optional_float(sexpr, "width"),
+            stroke=stroke,
+            fill=fill,
+            locked=SExprParser.has_symbol(sexpr, "locked"),
+            uuid=uuid_obj,
+        )
 
     def to_sexpr(self) -> SExpr:
-        result: SExpr = [Symbol("fp_circle")]
+        result: SExpr = [Symbol(self.__token_name__)]
         result.append([Symbol("center"), self.center.x, self.center.y])
         result.append([Symbol("end"), self.end.x, self.end.y])
-        result.append([Symbol("layer"), self.layer])
-        result.append(self.stroke.to_sexpr())
 
+        if self.layer:
+            result.append([Symbol("layer"), self.layer])
+        if self.width is not None:
+            result.append([Symbol("width"), self.width])
+        if self.stroke:
+            result.append(self.stroke.to_sexpr())
         if self.fill:
             result.append([Symbol("fill"), Symbol("yes")])
-
+        if self.locked:
+            result.append(Symbol("locked"))
         if self.uuid:
             result.append(self.uuid.to_sexpr())
 
@@ -482,17 +637,109 @@ class FootprintCircle(GraphicalCircle):
 
 
 @dataclass
-class FootprintArc(GraphicalArc):
-    """Footprint arc - uses fp_arc token"""
+class FootprintArc(KiCadObject):
+    """Footprint arc definition.
+
+    The 'fp_arc' token defines a graphic arc in a footprint definition in the format:
+    (fp_arc
+        (start X Y)
+        (mid X Y)
+        (end X Y)
+        (layer LAYER_DEFINITION)
+        (width WIDTH)
+        STROKE_DEFINITION
+        [(locked)]
+        (uuid UUID)
+    )
+
+    Where:
+        start: Coordinates of the start position of the arc radius
+        mid: Coordinates of the midpoint along the arc
+        end: Coordinates of the end position of the arc radius
+        layer: Canonical layer the arc resides on
+        width: Line width of the arc (prior to version 7)
+        STROKE_DEFINITION: Line width and style of the arc (from version 7)
+        locked: Optional flag defining if the arc cannot be edited
+        uuid: Unique identifier of the arc object
+    """
+
+    __token_name__ = "fp_arc"
+
+    start: Position = field(default_factory=Position)
+    mid: Position = field(default_factory=Position)
+    end: Position = field(default_factory=Position)
+    layer: Optional[str] = None
+    width: Optional[float] = None
+    stroke: Optional["StrokeDefinition"] = None
+    locked: bool = False
+    uuid: Optional["UUID"] = None
+
+    @classmethod
+    def from_sexpr(cls, sexpr: SExpr) -> "FootprintArc":
+        if not sexpr:
+            return cls()
+
+        start_token = SExprParser.find_token(sexpr, "start")
+        start = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(start_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(start_token, 2)),
+            )
+            if start_token
+            else Position()
+        )
+
+        mid_token = SExprParser.find_token(sexpr, "mid")
+        mid = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(mid_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(mid_token, 2)),
+            )
+            if mid_token
+            else Position()
+        )
+
+        end_token = SExprParser.find_token(sexpr, "end")
+        end = (
+            Position(
+                SExprParser.safe_float(SExprParser.get_value(end_token, 1)),
+                SExprParser.safe_float(SExprParser.get_value(end_token, 2)),
+            )
+            if end_token
+            else Position()
+        )
+
+        stroke_token = SExprParser.find_token(sexpr, "stroke")
+        stroke = StrokeDefinition.from_sexpr(stroke_token) if stroke_token else None
+
+        uuid_token = SExprParser.find_token(sexpr, "uuid")
+        uuid_obj = UUID.from_sexpr(uuid_token) if uuid_token else None
+
+        return cls(
+            start=start,
+            mid=mid,
+            end=end,
+            layer=SExprParser.get_optional_str(sexpr, "layer"),
+            width=SExprParser.get_optional_float(sexpr, "width"),
+            stroke=stroke,
+            locked=SExprParser.has_symbol(sexpr, "locked"),
+            uuid=uuid_obj,
+        )
 
     def to_sexpr(self) -> SExpr:
-        result: SExpr = [Symbol("fp_arc")]
+        result: SExpr = [Symbol(self.__token_name__)]
         result.append([Symbol("start"), self.start.x, self.start.y])
         result.append([Symbol("mid"), self.mid.x, self.mid.y])
         result.append([Symbol("end"), self.end.x, self.end.y])
-        result.append([Symbol("layer"), self.layer])
-        result.append(self.stroke.to_sexpr())
 
+        if self.layer:
+            result.append([Symbol("layer"), self.layer])
+        if self.width is not None:
+            result.append([Symbol("width"), self.width])
+        if self.stroke:
+            result.append(self.stroke.to_sexpr())
+        if self.locked:
+            result.append(Symbol("locked"))
         if self.uuid:
             result.append(self.uuid.to_sexpr())
 
@@ -1465,46 +1712,108 @@ class Footprint(KiCadObject):
 
 @dataclass
 class KiCadFootprint(KiCadObject):
-    """KiCad footprint definition"""
+    """KiCad footprint definition.
 
-    library_link: Optional[str] = None
-    locked: Optional[bool] = None
-    placed: Optional[bool] = None
-    layer: str = "F.Cu"
-    tedit: Optional[str] = None
-    uuid: Optional[UUID] = None
-    position: Optional[Position] = None
-    description: Optional[str] = None
-    tags: Optional[str] = None
-    properties: List[Property] = field(default_factory=list)
-    path: Optional[str] = None
-    autoplace_cost90: Optional[int] = None
-    autoplace_cost180: Optional[int] = None
-    solder_mask_margin: Optional[float] = None
-    solder_paste_margin: Optional[float] = None
-    solder_paste_ratio: Optional[float] = None
-    clearance: Optional[float] = None
-    zone_connect: Optional[PadConnection] = None
-    thermal_width: Optional[float] = None
-    thermal_gap: Optional[float] = None
-    attributes: Optional[FootprintAttributes] = None
-    private_layers: List[str] = field(default_factory=list)
-    net_tie_pad_groups: List[str] = field(default_factory=list)
+    The 'footprint' token defines a footprint in the format:
+    (footprint
+        ["LIBRARY_LINK"]
+        [locked]
+        [placed]
+        (layer LAYER_DEFINITIONS)
+        (tedit TIME_STAMP)
+        [(uuid UUID)]
+        [POSITION_IDENTIFIER]
+        [(descr "DESCRIPTION")]
+        [(tags "NAME")]
+        [(property "KEY" "VALUE") ...]
+        (path "PATH")
+        [(autoplace_cost90 COST)]
+        [(autoplace_cost180 COST)]
+        [(solder_mask_margin MARGIN)]
+        [(solder_paste_margin MARGIN)]
+        [(solder_paste_ratio RATIO)]
+        [(clearance CLEARANCE)]
+        [(zone_connect CONNECTION_TYPE)]
+        [(thermal_width WIDTH)]
+        [(thermal_gap DISTANCE)]
+        [ATTRIBUTES]
+        [(private_layers LAYER_DEFINITIONS)]
+        [(net_tie_pad_groups PAD_GROUP_DEFINITIONS)]
+        GRAPHIC_ITEMS...
+        PADS...
+        ZONES...
+        GROUPS...
+        3D_MODEL
+    )
+    """
 
-    # Graphic items
-    texts: List[FootprintText] = field(default_factory=list)
-    lines: List[FootprintLine] = field(default_factory=list)
-    rectangles: List[FootprintRectangle] = field(default_factory=list)
-    circles: List[FootprintCircle] = field(default_factory=list)
-    arcs: List[FootprintArc] = field(default_factory=list)
-    polygons: List[FootprintPolygon] = field(default_factory=list)
+    __token_name__ = "footprint"
 
-    # Footprint-specific items
-    pads: List[FootprintPad] = field(default_factory=list)
-    zones: List["Zone"] = field(default_factory=list)
-    keepout_zones: List["Zone"] = field(default_factory=list)
-    groups: List[Group] = field(default_factory=list)
-    model: Optional[Footprint3DModel] = None
+    # Core identification
+    library_link: Optional[str] = None  # LIBRARY_LINK for board footprints
+
+    # Placement and state flags
+    locked: bool = False  # Cannot be edited flag
+    placed: bool = True  # Has been placed flag
+
+    # Layer and positioning
+    layer: str = "F.Cu"  # Canonical layer the footprint is placed
+    position: Position = field(
+        default_factory=Position
+    )  # X, Y coordinates and rotation
+
+    # Timestamps and identification
+    tedit: Optional[str] = None  # Last edit timestamp
+    uuid: Optional[UUID] = None  # Unique identifier (board footprints)
+
+    # Description and metadata
+    descr: Optional[str] = None  # Description string
+    tags: Optional[str] = None  # Search tags string
+    properties: List[Property] = field(default_factory=list)  # Custom properties
+    path: Optional[str] = None  # Hierarchical path to schematic symbol
+
+    # Autoplace settings (board footprints)
+    autoplace_cost90: Optional[int] = None  # Vertical autoplace cost (1-10)
+    autoplace_cost180: Optional[int] = None  # Horizontal autoplace cost (1-10)
+
+    # Solder settings
+    solder_mask_margin: Optional[float] = None  # Distance from pads to solder mask
+    solder_paste_margin: Optional[float] = None  # Distance from pads to solder paste
+    solder_paste_ratio: Optional[float] = (
+        None  # Percentage of pad size for solder paste
+    )
+
+    # Electrical settings
+    clearance: Optional[float] = None  # Clearance to copper objects
+    zone_connect: Optional[PadConnection] = None  # How pads connect to zones (0-3)
+    thermal_width: Optional[float] = None  # Thermal relief spoke width
+    thermal_gap: Optional[float] = None  # Distance from pad to zone for thermals
+
+    # Advanced features
+    attributes: Optional[FootprintAttributes] = None  # Footprint attributes
+    private_layers: List[str] = field(default_factory=list)  # Private layer names
+    net_tie_pad_groups: List[str] = field(default_factory=list)  # Net-tie pad groups
+
+    # Graphical elements
+    texts: List[FootprintText] = field(default_factory=list)  # Text objects
+    lines: List[FootprintLine] = field(default_factory=list)  # Line objects
+    rectangles: List[FootprintRectangle] = field(
+        default_factory=list
+    )  # Rectangle objects
+    circles: List[FootprintCircle] = field(default_factory=list)  # Circle objects
+    arcs: List[FootprintArc] = field(default_factory=list)  # Arc objects
+    polygons: List[FootprintPolygon] = field(default_factory=list)  # Polygon objects
+
+    # Electrical elements
+    pads: List[FootprintPad] = field(default_factory=list)  # Pad definitions
+    zones: List["Zone"] = field(default_factory=list)  # Zone definitions
+    keepout_zones: List["Zone"] = field(default_factory=list)  # Keepout zones
+
+    # Organization
+    groups: List[Group] = field(default_factory=list)  # Grouped objects
+
+    # 3D model
+    model: Optional[Footprint3DModel] = None  # 3D model association
 
     @classmethod
     def from_sexpr(cls, sexpr: SExpr) -> "KiCadFootprint":
@@ -1521,25 +1830,57 @@ class KiCadFootprint(KiCadObject):
 
         footprint = cls(
             library_link=library_link,
-            locked=SExprParser.get_optional_bool_flag(sexpr, "locked"),
-            placed=SExprParser.get_optional_bool_flag(sexpr, "placed"),
+            locked=SExprParser.has_symbol(sexpr, "locked"),
+            placed=(
+                not SExprParser.has_symbol(sexpr, "placed")
+                if SExprParser.has_symbol(sexpr, "placed")
+                else True
+            ),
             layer=SExprParser.get_required_str(sexpr, "layer", default="F.Cu"),
+            position=Position.from_sexpr(at_token) if at_token else Position(),
             tedit=SExprParser.get_optional_str(sexpr, "tedit"),
             uuid=UUID.from_sexpr(uuid_token) if uuid_token else None,
-            position=Position.from_sexpr(at_token) if at_token else None,
-            description=SExprParser.get_optional_str(sexpr, "descr"),
+            descr=SExprParser.get_optional_str(sexpr, "descr"),
             tags=SExprParser.get_optional_str(sexpr, "tags"),
             path=SExprParser.get_optional_str(sexpr, "path"),
+            autoplace_cost90=SExprParser.get_optional_int(sexpr, "autoplace_cost90"),
+            autoplace_cost180=SExprParser.get_optional_int(sexpr, "autoplace_cost180"),
+            solder_mask_margin=SExprParser.get_optional_float(
+                sexpr, "solder_mask_margin"
+            ),
+            solder_paste_margin=SExprParser.get_optional_float(
+                sexpr, "solder_paste_margin"
+            ),
+            solder_paste_ratio=SExprParser.get_optional_float(
+                sexpr, "solder_paste_ratio"
+            ),
+            clearance=SExprParser.get_optional_float(sexpr, "clearance"),
+            zone_connect=parse_zone_connect(sexpr),
+            thermal_width=SExprParser.get_optional_float(sexpr, "thermal_width"),
+            thermal_gap=SExprParser.get_optional_float(sexpr, "thermal_gap"),
             attributes=(
                 FootprintAttributes.from_sexpr(attr_token) if attr_token else None
             ),
             model=Footprint3DModel.from_sexpr(model_token) if model_token else None,
-            zone_connect=parse_zone_connect(sexpr),
         )
 
         # Parse properties
         for prop_token in SExprParser.find_all_tokens(sexpr, "property"):
             footprint.properties.append(Property.from_sexpr(prop_token))
+
+        # Parse private layers
+        private_layers_token = SExprParser.find_token(sexpr, "private_layers")
+        if private_layers_token:
+            for layer_name in private_layers_token[1:]:
+                if isinstance(layer_name, str):
+                    footprint.private_layers.append(layer_name)
+
+        # Parse net tie pad groups
+        net_tie_token = SExprParser.find_token(sexpr, "net_tie_pad_groups")
+        if net_tie_token:
+            for group_name in net_tie_token[1:]:
+                if isinstance(group_name, str):
+                    footprint.net_tie_pad_groups.append(group_name)
 
         # Parse graphic items
         for text_token in SExprParser.find_all_tokens(sexpr, "fp_text"):
@@ -1598,8 +1939,8 @@ class KiCadFootprint(KiCadObject):
             result.append(self.uuid.to_sexpr())
         if self.position:
             result.append(self.position.to_sexpr())
-        if self.description:
-            result.append([Symbol("descr"), self.description])
+        if self.descr:
+            result.append([Symbol("descr"), self.descr])
         if self.tags:
             result.append([Symbol("tags"), self.tags])
 
@@ -1610,8 +1951,47 @@ class KiCadFootprint(KiCadObject):
         if self.path:
             result.append([Symbol("path"), self.path])
 
+        # Add autoplace costs
+        if self.autoplace_cost90 is not None:
+            result.append([Symbol("autoplace_cost90"), self.autoplace_cost90])
+        if self.autoplace_cost180 is not None:
+            result.append([Symbol("autoplace_cost180"), self.autoplace_cost180])
+
+        # Add solder settings
+        if self.solder_mask_margin is not None:
+            result.append([Symbol("solder_mask_margin"), self.solder_mask_margin])
+        if self.solder_paste_margin is not None:
+            result.append([Symbol("solder_paste_margin"), self.solder_paste_margin])
+        if self.solder_paste_ratio is not None:
+            result.append([Symbol("solder_paste_ratio"), self.solder_paste_ratio])
+
+        # Add electrical settings
+        if self.clearance is not None:
+            result.append([Symbol("clearance"), self.clearance])
+        if self.zone_connect is not None:
+            result.append([Symbol("zone_connect"), self.zone_connect.value])
+        if self.thermal_width is not None:
+            result.append([Symbol("thermal_width"), self.thermal_width])
+        if self.thermal_gap is not None:
+            result.append([Symbol("thermal_gap"), self.thermal_gap])
+
+        # Add attributes
         if self.attributes:
             result.append(self.attributes.to_sexpr())
+
+        # Add private layers
+        if self.private_layers:
+            private_layers_list: SExpr = [Symbol("private_layers")]
+            for layer in self.private_layers:
+                private_layers_list.append(layer)
+            result.append(private_layers_list)
+
+        # Add net tie pad groups
+        if self.net_tie_pad_groups:
+            net_tie_list: SExpr = [Symbol("net_tie_pad_groups")]
+            for group in self.net_tie_pad_groups:
+                net_tie_list.append(group)
+            result.append(net_tie_list)
 
         # Add graphic items
         for text in self.texts:
@@ -1643,9 +2023,7 @@ class KiCadFootprint(KiCadObject):
         for group in self.groups:
             result.append(group.to_sexpr())
 
-        if self.zone_connect is not None:
-            result.append([Symbol("zone_connect"), self.zone_connect.value])
-
+        # Add 3D model
         if self.model:
             result.append(self.model.to_sexpr())
 
