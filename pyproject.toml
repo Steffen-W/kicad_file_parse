@@ -131,8 +131,7 @@ ignore_errors = true
 
 [tool.pyright]
 include = [
-    "kicad_parser",
-    "examples"
+    "kicad_parserv2"
 ]
 exclude = [
     "**/__pycache__",

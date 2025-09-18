@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from .base_element import KiCadObject
-from .base_types import At, Offset, Size, Width
+from .base_types import Anchor, At, Clearance, Locked, Offset, Size, Width
+from .enums import PadShape, PadType, ZoneConnection
 
 
 @dataclass
@@ -87,16 +88,16 @@ class Options(KiCadObject):
 
     __token_name__ = "options"
 
-    clearance: Optional[str] = field(
+    clearance: Optional[Clearance] = field(
         default=None,
         metadata={
-            "description": "Clearance type (outline | convexhull)",
+            "description": "Clearance type for custom pad",
             "required": False,
         },
     )
-    anchor: Optional[str] = field(
+    anchor: Optional[Anchor] = field(
         default=None,
-        metadata={"description": "Anchor pad shape (rect | circle)", "required": False},
+        metadata={"description": "Anchor pad shape", "required": False},
     )
 
 
@@ -138,7 +139,9 @@ class Shape(KiCadObject):
 
     __token_name__ = "shape"
 
-    shape: str = field(default="circle", metadata={"description": "Pad shape type"})
+    shape: PadShape = field(
+        default=PadShape.CIRCLE, metadata={"description": "Pad shape type"}
+    )
 
 
 @dataclass
@@ -237,8 +240,9 @@ class ZoneConnect(KiCadObject):
 
     __token_name__ = "zone_connect"
 
-    connection_type: int = field(
-        default=0, metadata={"description": "Zone connection type (0-3)"}
+    connection_type: ZoneConnection = field(
+        default=ZoneConnection.INHERITED,
+        metadata={"description": "Zone connection type"},
     )
 
 
@@ -408,15 +412,13 @@ class Pad(KiCadObject):
     __token_name__ = "pad"
 
     number: str = field(default="", metadata={"description": "Pad number or name"})
-    type: str = field(
-        default="thru_hole",
-        metadata={"description": "Pad type (thru_hole | smd | connect | np_thru_hole)"},
+    type: PadType = field(
+        default=PadType.THRU_HOLE,
+        metadata={"description": "Pad type"},
     )
-    shape: str = field(
-        default="circle",
-        metadata={
-            "description": "Pad shape (circle | rect | oval | trapezoid | roundrect | custom)"
-        },
+    shape: PadShape = field(
+        default=PadShape.CIRCLE,
+        metadata={"description": "Pad shape"},
     )
     at: At = field(
         default_factory=lambda: At(), metadata={"description": "Position and rotation"}
@@ -433,7 +435,7 @@ class Pad(KiCadObject):
     property: Optional[str] = field(
         default=None, metadata={"description": "Pad property", "required": False}
     )
-    locked: Optional[bool] = field(
+    locked: Optional[Locked] = field(
         default=None,
         metadata={"description": "Whether pad is locked", "required": False},
     )
@@ -453,7 +455,8 @@ class Pad(KiCadObject):
         default=None, metadata={"description": "Chamfer ratio", "required": False}
     )
     chamfer: Optional[list[str]] = field(
-        default=None, metadata={"description": "Chamfer corners", "required": False}
+        default_factory=list,
+        metadata={"description": "Chamfer corners", "required": False},
     )
     net: Optional[Net] = field(
         default=None, metadata={"description": "Net connection", "required": False}
@@ -483,7 +486,7 @@ class Pad(KiCadObject):
     clearance: Optional[float] = field(
         default=None, metadata={"description": "Clearance value", "required": False}
     )
-    zone_connect: Optional[int] = field(
+    zone_connect: Optional[ZoneConnection] = field(
         default=None,
         metadata={"description": "Zone connection type", "required": False},
     )

@@ -3,7 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .base_element import KiCadObject
+from .base_element import KiCadObject, OptionalFlag
+from .enums import FillType, PadShape, StrokeType
 
 
 @dataclass
@@ -20,8 +21,9 @@ class Anchor(KiCadObject):
 
     __token_name__ = "anchor"
 
-    pad_shape: str = field(
-        default="rect", metadata={"description": "Anchor pad shape (rect or circle)"}
+    pad_shape: PadShape = field(
+        default=PadShape.RECT,
+        metadata={"description": "Anchor pad shape (rect or circle)"},
     )
 
 
@@ -297,10 +299,8 @@ class Fill(KiCadObject):
     __token_name__ = "fill"
 
     type: Type = field(
-        default_factory=lambda: Type(value="none"),
-        metadata={
-            "description": "Fill type specification (none | outline | background)"
-        },
+        default_factory=lambda: Type(value=FillType.NONE.value),
+        metadata={"description": "Fill type specification"},
     )
 
 
@@ -624,7 +624,7 @@ class Stroke(KiCadObject):
         metadata={"description": "Line width specification"},
     )
     type: Type = field(
-        default_factory=lambda: Type(value="solid"),
+        default_factory=lambda: Type(value=StrokeType.SOLID.value),
         metadata={"description": "Stroke line style specification"},
     )
     color: Optional[Color] = field(
@@ -790,16 +790,82 @@ class Font(KiCadObject):
     size: Optional[Size] = field(
         default=None, metadata={"description": "Font size", "required": False}
     )
-    thickness: Optional[float] = field(
+    thickness: Optional[Thickness] = field(
         default=None, metadata={"description": "Font thickness", "required": False}
     )
-    bold: Optional[bool] = field(
-        default=None,
-        metadata={"description": "Whether font is bold", "required": False},
+    bold: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("bold"),
+        metadata={"description": "Bold flag", "required": False},
     )
-    italic: Optional[bool] = field(
-        default=None,
-        metadata={"description": "Whether font is italic", "required": False},
+    italic: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("italic"),
+        metadata={"description": "Italic flag", "required": False},
+    )
+
+
+@dataclass
+class Justify(KiCadObject):
+    """Text justification definition token.
+
+    The 'justify' token defines text alignment and mirroring in the format::
+
+        (justify [left | right | center] [top | bottom | center] [mirror])
+
+    Args:
+        left: Left horizontal justification flag (optional)
+        right: Right horizontal justification flag (optional)
+        top: Top vertical justification flag (optional)
+        bottom: Bottom vertical justification flag (optional)
+        center: Center justification flag (horizontal or vertical, optional)
+        mirror: Mirror text flag (optional)
+
+    Note: Uses individual OptionalFlag variables to handle parameter order variation
+    """
+
+    __token_name__ = "justify"
+
+    # Horizontal justification flags
+    left: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("left"),
+        metadata={
+            "description": "Left horizontal justification flag",
+            "required": False,
+        },
+    )
+    right: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("right"),
+        metadata={
+            "description": "Right horizontal justification flag",
+            "required": False,
+        },
+    )
+
+    # Vertical justification flags
+    top: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("top"),
+        metadata={"description": "Top vertical justification flag", "required": False},
+    )
+    bottom: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("bottom"),
+        metadata={
+            "description": "Bottom vertical justification flag",
+            "required": False,
+        },
+    )
+
+    # Center can be horizontal or vertical - ambiguous in S-expression
+    center: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("center"),
+        metadata={
+            "description": "Center justification flag (horizontal or vertical)",
+            "required": False,
+        },
+    )
+
+    # Mirror flag
+    mirror: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("mirror"),
+        metadata={"description": "Mirror text flag", "required": False},
     )
 
 
@@ -811,7 +877,7 @@ class Effects(KiCadObject):
 
         (effects
             (font [size SIZE] [thickness THICKNESS] [bold] [italic])
-            [justify JUSTIFY]
+            [(justify JUSTIFY)]
             [hide]
         )
 
@@ -826,11 +892,12 @@ class Effects(KiCadObject):
     font: Optional[Font] = field(
         default=None, metadata={"description": "Font definition", "required": False}
     )
-    justify: Optional[str] = field(
-        default=None, metadata={"description": "Text justification", "required": False}
-    )
-    hide: Optional[bool] = field(
+    justify: Optional[Justify] = field(
         default=None,
+        metadata={"description": "Text justification", "required": False},
+    )
+    hide: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("hide"),
         metadata={"description": "Whether text is hidden", "required": False},
     )
 

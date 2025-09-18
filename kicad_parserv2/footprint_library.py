@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .base_element import KiCadObject
-from .base_types import At, Property, Rotate, Xyz
+from .base_types import At, Clearance, Layer, Locked, Property, Rotate, Uuid, Width, Xyz
 from .pad_and_drill import Pad
-from .text_and_documents import Scale
+from .text_and_documents import Scale, Tedit
 
 
 @dataclass
@@ -281,7 +281,7 @@ class Footprint(KiCadObject):
         default=None,
         metadata={"description": "Link to footprint library", "required": False},
     )
-    locked: Optional[bool] = field(
+    locked: Optional[Locked] = field(
         default=None,
         metadata={
             "description": "Whether the footprint cannot be edited",
@@ -295,11 +295,14 @@ class Footprint(KiCadObject):
             "required": False,
         },
     )
-    layer: str = field(
-        default="", metadata={"description": "Layer the footprint is placed on"}
+    layer: Layer = field(
+        default_factory=lambda: Layer(),
+        metadata={"description": "Layer the footprint is placed on"},
     )
-    tedit: int = field(default=0, metadata={"description": "Last edit timestamp"})
-    uuid: Optional[str] = field(
+    tedit: Tedit = field(
+        default_factory=lambda: Tedit(), metadata={"description": "Last edit timestamp"}
+    )
+    uuid: Optional[Uuid] = field(
         default=None,
         metadata={
             "description": "Unique identifier for board footprints",
@@ -322,7 +325,7 @@ class Footprint(KiCadObject):
         metadata={"description": "Search tags for the footprint", "required": False},
     )
     properties: Optional[list[Property]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of footprint properties", "required": False},
     )
     path: str = field(
@@ -362,7 +365,7 @@ class Footprint(KiCadObject):
             "required": False,
         },
     )
-    clearance: Optional[float] = field(
+    clearance: Optional[Clearance] = field(
         default=None,
         metadata={
             "description": "Clearance to board copper objects",
@@ -373,11 +376,11 @@ class Footprint(KiCadObject):
         default=None,
         metadata={"description": "How pads connect to filled zones", "required": False},
     )
-    thermal_width: Optional[float] = field(
+    thermal_width: Optional[Width] = field(
         default=None,
         metadata={"description": "Thermal relief spoke width", "required": False},
     )
-    thermal_gap: Optional[float] = field(
+    thermal_gap: Optional[Clearance] = field(
         default=None,
         metadata={
             "description": "Distance from pad to zone for thermal relief",
@@ -385,17 +388,19 @@ class Footprint(KiCadObject):
         },
     )
     private_layers: Optional[list[str]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of private layers", "required": False},
     )
     net_tie_pad_groups: Optional[NetTiePadGroups] = field(
         default=None, metadata={"description": "Net tie pad groups", "required": False}
     )
     pads: Optional[list[Pad]] = field(
-        default=None, metadata={"description": "List of pads", "required": False}
+        default_factory=list,
+        metadata={"description": "List of pads", "required": False},
     )
     models: Optional[list[Model]] = field(
-        default=None, metadata={"description": "List of 3D models", "required": False}
+        default_factory=list,
+        metadata={"description": "List of 3D models", "required": False},
     )
 
 

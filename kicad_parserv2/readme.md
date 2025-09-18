@@ -4,7 +4,7 @@ This document outlines the complete class structure for the KiCad Parser v2, wit
 
 ## File Organization
 
-### base_types.py - Fundamental Types (38 tokens)
+### base_types.py - Fundamental Types (39 tokens)
 
 **No dependencies - foundation layer**
 
@@ -22,6 +22,7 @@ fill                   -> base_types.Fill  # fill_definition.txt
 font                   -> base_types.Font  # symbol_text.txt
 height                 -> base_types.Height  # dimension.txt
 id                     -> base_types.Id  # group.txt
+justify                -> base_types.Justify  # symbol_text.txt
 layer                  -> base_types.Layer  # stack_up_layer_settings.txt
 linewidth              -> base_types.Linewidth  # graphical_polygon.txt
 locked                 -> base_types.Locked  # track_segment.txt
@@ -83,7 +84,7 @@ image                  -> text_and_documents.Image  # image.txt
 pngdata                -> text_and_documents.Pngdata  # image.txt
 ```
 
-### pad_and_drill.py - Pad and Drill Elements (17 tokens)
+### pad_and_drill.py - Pad and Drill Elements (18 tokens)
 
 **Dependencies: base_types**
 
@@ -100,6 +101,7 @@ thermal_gap            -> pad_and_drill.ThermalGap  # footprint.txt
 thermal_width          -> pad_and_drill.ThermalWidth  # footprint.txt
 zone_connect           -> pad_and_drill.ZoneConnect  # footprint_pad.txt
 net                    -> pad_and_drill.Net  # nets_section.txt
+options_clearance      -> pad_and_drill.OptionsClearance  # custom_pad_options.txt
 drill                  -> pad_and_drill.Drill  # pad_drill_definition.txt
 pad                    -> pad_and_drill.Pad  # footprint_pad.txt
 pads                   -> pad_and_drill.Pads  # footprint.txt
@@ -277,7 +279,7 @@ Each S-expression token gets a corresponding class with the pattern:
 2. **Nested Elements**: When tokens contain other tokens, they reference classes from appropriate modules
 3. **File Organization**: Tokens grouped by functional area and dependency level
 4. **Inheritance**: All classes inherit from a base `KiCadObject` class
-5. **Token Count**: Total of 205 unique tokens mapped to 205 classes across 10 Python modules
+5. **Token Count**: Total of 207 unique tokens mapped to 207 classes across 10 Python modules
 
 ## Class Implementation Specification
 

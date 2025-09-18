@@ -1,9 +1,11 @@
-"""Recursive S-expression parser for KiCad objects."""
+"""Optimized S-expression parser for KiCad objects with field classification."""
 
 from __future__ import annotations
 
+import logging
 from abc import ABC
 from dataclasses import MISSING, dataclass, fields
+from enum import Enum
 from typing import (
     Any,
     ClassVar,
@@ -23,35 +25,67 @@ from .sexpr_parser import SExpr, SExprParser, SExprValue, sexpr_to_str
 T = TypeVar("T", bound="KiCadObject")
 
 
+@dataclass
 class ParseContext:
-    """Context for parsing operations with type registry."""
+    """Context for tracking hierarchical parsing path."""
 
-    def __init__(self) -> None:
-        self._type_registry: Dict[str, Type[KiCadObject]] = {}
+    path: List[str]
 
-    def register_type(self, cls: Type[KiCadObject]) -> None:
-        """Register a KiCadObject type by its token name."""
-        if hasattr(cls, "__token_name__") and cls.__token_name__:
-            self._type_registry[cls.__token_name__] = cls
+    def __init__(self, initial_path: Optional[List[str]] = None):
+        """Initialize parsing context with optional initial path."""
+        self.path = initial_path or []
 
-    def get_type(self, token_name: str) -> Optional[Type[KiCadObject]]:
-        """Get registered type by token name."""
-        return self._type_registry.get(token_name)
+    def enter(self, name: str) -> "ParseContext":
+        """Create new context for entering a nested level."""
+        return ParseContext(self.path + [name])
+
+    def get_path_string(self) -> str:
+        """Get the current path as a formatted string."""
+        return " > ".join(self.path) if self.path else ""
+
+    def format_message(self, message: str) -> str:
+        """Format a message with the current path context."""
+        path_str = self.get_path_string()
+        if path_str:
+            return f"{path_str}: {message}"
+        return message
 
 
-# Global type registry
-_global_context = ParseContext()
+class ParseStrictness(Enum):
+    """Parser strictness levels for error handling."""
+
+    STRICT = "strict"  # Raise exceptions for all parsing errors
+    LENIENT = "lenient"  # Log warnings and use defaults for missing fields
+    PERMISSIVE = "permissive"  # Silently use defaults for missing fields
+    COMPLETE = "complete"  # Track all parameters and raise error if any are unused
 
 
-def register_kicad_type(cls: Type[KiCadObject]) -> Type[KiCadObject]:
-    """Decorator to register KiCadObject types."""
-    _global_context.register_type(cls)
-    return cls
+class FieldType(Enum):
+    """Classification of field types for optimized parsing."""
+
+    PRIMITIVE = "primitive"
+    OPTIONAL_PRIMITIVE = "optional_primitive"
+    LIST_PRIMITIVE = "list_primitive"
+    KICAD_OBJECT = "kicad_object"
+    OPTIONAL_KICAD_OBJECT = "optional_kicad_object"
+    LIST_KICAD_OBJECT = "list_kicad_object"
+    OPTIONAL_FLAG = "optional_flag"
+
+
+@dataclass
+class FieldInfo:
+    """Complete field information for optimized parsing."""
+
+    name: str
+    field_type: FieldType
+    inner_type: Type[Any]
+    position_index: int
+    token_name: Optional[str] = None
 
 
 @dataclass
 class KiCadObject(ABC):
-    """Base class for KiCad S-expression objects with recursive parsing."""
+    """Base class for KiCad S-expression objects with optimized parsing."""
 
     __token_name__: ClassVar[str] = ""
 
@@ -63,197 +97,388 @@ class KiCadObject(ABC):
             )
 
     @classmethod
-    def from_sexpr(cls: Type[T], sexpr: Union[str, SExpr]) -> T:
-        """Parse from string or S-expression.
-
-        Provides bidirectional symmetry with to_sexpr().
-        """
+    def from_sexpr(
+        cls: Type[T],
+        sexpr: Union[str, SExpr],
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        context: Optional[ParseContext] = None,
+    ) -> T:
+        """Parse from string or S-expression with configurable strictness and path tracking."""
         if isinstance(sexpr, str):
             parser = SExprParser.from_string(sexpr)
             sexpr = parser.sexpr
 
-        return cls._parse_sexpr(sexpr)
+        # Create context if not provided
+        if context is None:
+            context = ParseContext([cls.__name__])
+
+        return cls._parse_sexpr(sexpr, strictness, context)
 
     @classmethod
-    def _parse_sexpr(cls: Type[T], sexpr: SExpr) -> T:
-        """Core recursive parser."""
+    def _parse_sexpr(
+        cls: Type[T],
+        sexpr: SExpr,
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        context: Optional[ParseContext] = None,
+    ) -> T:
+        """Core optimized parser using field classification."""
         if not isinstance(sexpr, list) or not sexpr:
             raise ValueError(f"Invalid S-expression for {cls.__name__}: {sexpr}")
 
-        # Validate token name
-        token_name = str(sexpr[0])
-        if token_name != cls.__token_name__:
+        if str(sexpr[0]) != cls.__token_name__:
             raise ValueError(
-                f"Token mismatch: expected '{cls.__token_name__}', got '{token_name}'"
+                f"Token mismatch: expected '{cls.__token_name__}', got '{sexpr[0]}'"
             )
 
-        # Get field types and defaults
-        field_types = get_type_hints(cls)
+        # Create context if not provided
+        if context is None:
+            context = ParseContext([cls.__name__])
+
+        field_infos = cls._classify_fields()
         field_defaults = {
             f.name: f.default for f in fields(cls) if f.default != MISSING
         }
-
-        # Parse fields recursively
         parsed_values = {}
-        sexpr_data = sexpr[1:]  # Skip token name
+        sexpr_data = sexpr[1:]
 
-        for field in fields(cls):
-            if field.name.startswith("_"):  # Skip private fields
-                continue
+        # Create parser with tracking for COMPLETE mode
+        track_usage = strictness == ParseStrictness.COMPLETE
+        parser = SExprParser(sexpr, track_usage=track_usage)
 
-            field_type = field_types[field.name]
-            value = cls._parse_field_value(field.name, field_type, sexpr_data)
-
+        for field_info in field_infos:
+            # Create field-specific context
+            field_context = context.enter(field_info.name)
+            value = cls._parse_field(
+                field_info, sexpr_data, strictness, field_defaults, parser, field_context
+            )
             if value is not None:
-                parsed_values[field.name] = value
-            elif field.name in field_defaults:
-                parsed_values[field.name] = field_defaults[field.name]
+                parsed_values[field_info.name] = value
+            elif field_info.name in field_defaults:
+                parsed_values[field_info.name] = field_defaults[field_info.name]
+
+        # Check for unused parameters in COMPLETE mode
+        if strictness == ParseStrictness.COMPLETE:
+            parser.check_complete_usage(cls.__name__)
 
         return cls(**parsed_values)
 
     @classmethod
-    def _parse_field_value(
-        cls, field_name: str, field_type: Type[Any], sexpr_data: List[SExprValue]
+    def _classify_fields(cls) -> List[FieldInfo]:
+        """Pre-classify all fields for optimized parsing."""
+        field_types = get_type_hints(cls)
+        field_infos = []
+        position_index = 0
+
+        for field in fields(cls):
+            if field.name.startswith("_"):
+                continue
+
+            field_type = field_types[field.name]
+            field_info = cls._classify_field(field.name, field_type, position_index)
+            field_infos.append(field_info)
+            position_index += 1
+
+        return field_infos
+
+    @classmethod
+    def _classify_field(
+        cls, name: str, field_type: Type[Any], position: int
+    ) -> FieldInfo:
+        """Classify a single field and extract all parsing information."""
+        is_optional = get_origin(field_type) is Union and type(None) in get_args(
+            field_type
+        )
+        is_list = get_origin(field_type) in (list, List)
+
+        # Unwrap Optional[...] and List[...] to get inner type
+        inner_type = field_type
+        if is_optional:
+            inner_type = next(
+                arg for arg in get_args(field_type) if arg is not type(None)
+            )
+
+        # Re-check if we have a list after unwrapping Optional
+        is_list = get_origin(inner_type) in (list, List)
+        if is_list:
+            inner_type = get_args(inner_type)[0] if get_args(inner_type) else str
+        is_kicad_object = False
+        is_optional_flag = False
+        try:
+            is_kicad_object = isinstance(inner_type, type) and issubclass(
+                inner_type, KiCadObject
+            )
+        except TypeError as e:
+            logging.warning(
+                f"Type checking failed for field '{name}' with type {inner_type}: {e}"
+            )
+            is_kicad_object = False
+
+        # Check if it's an OptionalFlag type
+        try:
+            is_optional_flag = isinstance(inner_type, type) and issubclass(
+                inner_type, OptionalFlag
+            )
+        except TypeError:
+            is_optional_flag = False
+
+        token_name = (
+            getattr(inner_type, "__token_name__", None) if is_kicad_object else None
+        )
+        if is_list and is_kicad_object:
+            field_type_enum = FieldType.LIST_KICAD_OBJECT
+        elif is_list:
+            field_type_enum = FieldType.LIST_PRIMITIVE
+        elif is_optional and is_optional_flag:
+            field_type_enum = FieldType.OPTIONAL_FLAG
+        elif is_optional and is_kicad_object:
+            field_type_enum = FieldType.OPTIONAL_KICAD_OBJECT
+        elif is_optional:
+            field_type_enum = FieldType.OPTIONAL_PRIMITIVE
+        elif is_kicad_object:
+            field_type_enum = FieldType.KICAD_OBJECT
+        else:
+            field_type_enum = FieldType.PRIMITIVE
+
+        return FieldInfo(
+            name=name,
+            field_type=field_type_enum,
+            inner_type=inner_type,
+            position_index=position,
+            token_name=token_name,
+        )
+
+    @classmethod
+    def _parse_field(
+        cls,
+        field_info: FieldInfo,
+        sexpr_data: List[SExprValue],
+        strictness: ParseStrictness,
+        field_defaults: Dict[str, Any],
+        parser: Optional[SExprParser] = None,
+        context: Optional[ParseContext] = None,
     ) -> Any:
-        """Recursively parse a single field value."""
-        # Handle Optional[T] -> Union[T, None]
-        if cls._is_optional(field_type):
-            inner_type = cls._get_optional_inner_type(field_type)
-            result = cls._parse_field_value(field_name, inner_type, sexpr_data)
-            # For optional fields, if we get default values and no matching field was found, return None
-            if result == cls._get_default_value(
-                inner_type
-            ) and not cls._field_exists_in_sexpr(field_name, sexpr_data):
+        """Parse field using optimized classification with strictness handling."""
+        if field_info.field_type == FieldType.PRIMITIVE:
+            return cls._parse_primitive(
+                field_info, sexpr_data, strictness, field_defaults, parser, context
+            )
+
+        elif field_info.field_type == FieldType.OPTIONAL_PRIMITIVE:
+            try:
+                return cls._parse_primitive(
+                    field_info, sexpr_data, strictness, field_defaults, parser, context
+                )
+            except ValueError as e:
+                # Only re-raise conversion errors in STRICT mode, not missing value errors
+                if (
+                    strictness == ParseStrictness.STRICT
+                    and "No value found" not in str(e)
+                ):
+                    raise
+                elif strictness == ParseStrictness.LENIENT:
+                    message = f"Optional field '{field_info.name}' in {cls.__name__} failed to parse: {e}"
+                    if context:
+                        message = context.format_message(message)
+                    logging.warning(message)
                 return None
-            return result
 
-        # Handle List[T]
-        if cls._is_list_type(field_type):
-            element_type = cls._get_list_element_type(field_type)
-            return cls._parse_list_values(field_name, element_type, sexpr_data)
+        elif field_info.field_type == FieldType.KICAD_OBJECT:
+            return cls._parse_object(field_info, sexpr_data, strictness, parser, context)
 
-        # Handle KiCadObject subtypes (including all token types)
-        if cls._is_kicad_object(field_type):
-            return cls._parse_kicad_object(field_type, sexpr_data)
+        elif field_info.field_type == FieldType.OPTIONAL_KICAD_OBJECT:
+            return cls._parse_object(field_info, sexpr_data, strictness, parser, context)
 
-        # Handle primitive types (int, str, float, bool)
-        if field_type in (int, str, float, bool):
-            return cls._parse_primitive_value(field_name, field_type, sexpr_data)
+        elif field_info.field_type in (
+            FieldType.LIST_PRIMITIVE,
+            FieldType.LIST_KICAD_OBJECT,
+        ):
+            return cls._parse_list(field_info, sexpr_data, strictness, parser, context)
 
-        # If we reach here, the field type is not supported
+        elif field_info.field_type == FieldType.OPTIONAL_FLAG:
+            return cls._parse_optional_flag(field_info, sexpr_data, strictness, parser)
+
         return None
 
     @classmethod
-    def _parse_list_values(
-        cls, field_name: str, element_type: Type[Any], sexpr_data: List[SExprValue]
+    def _parse_primitive(
+        cls,
+        field_info: FieldInfo,
+        sexpr_data: List[SExprValue],
+        strictness: ParseStrictness,
+        field_defaults: Dict[str, Any],
+        parser: Optional[SExprParser] = None,
+        context: Optional[ParseContext] = None,
+    ) -> Any:
+        """Parse primitive value using field name or position with strictness handling."""
+        # Try named field first: (field_name value)
+        for i, item in enumerate(sexpr_data):
+            if (
+                isinstance(item, list)
+                and len(item) >= 2
+                and str(item[0]) == field_info.name
+            ):
+                # Mark as used for tracking (i+1 because index 0 is token name)
+                if parser:
+                    parser.mark_used(i + 1)
+                try:
+                    return cls._convert_value(item[1], field_info.inner_type)
+                except ValueError as e:
+                    if strictness == ParseStrictness.STRICT:
+                        raise
+                    elif strictness == ParseStrictness.LENIENT:
+                        message = f"Conversion failed for field '{field_info.name}' in {cls.__name__}: {e}"
+                        if context:
+                            message = context.format_message(message)
+                        logging.warning(message)
+
+        # Try positional access for multi-value tokens
+        if field_info.position_index < len(sexpr_data):
+            value = sexpr_data[field_info.position_index]
+            if not isinstance(value, list):
+                # Mark as used for tracking (position_index+1 because index 0 is token name)
+                if parser:
+                    parser.mark_used(field_info.position_index + 1)
+                try:
+                    return cls._convert_value(value, field_info.inner_type)
+                except ValueError as e:
+                    if strictness == ParseStrictness.STRICT:
+                        raise
+                    elif strictness == ParseStrictness.LENIENT:
+                        message = f"Positional conversion failed for field '{field_info.name}' in {cls.__name__}: {e}"
+                        if context:
+                            message = context.format_message(message)
+                        logging.warning(message)
+
+        if strictness == ParseStrictness.STRICT:
+            raise ValueError(f"No value found for field '{field_info.name}'")
+
+        # Check if field is optional (should not generate warnings when missing)
+        is_optional_field = field_info.field_type in (
+            FieldType.OPTIONAL_PRIMITIVE,
+            FieldType.OPTIONAL_KICAD_OBJECT,
+            FieldType.OPTIONAL_FLAG,
+        )
+
+        default_value = field_defaults.get(field_info.name)
+        if default_value is not None:
+            # Only log warnings for non-optional fields
+            if strictness == ParseStrictness.LENIENT and not is_optional_field:
+                message = f"Missing field '{field_info.name}' (default: {default_value})"
+                if context:
+                    message = context.format_message(message)
+                logging.warning(message)
+            return default_value
+
+        # Only warn for required fields
+        if strictness == ParseStrictness.LENIENT and not is_optional_field:
+            message = f"Missing field '{field_info.name}' in {cls.__name__} with no default, returning None"
+            if context:
+                message = context.format_message(message)
+            logging.warning(message)
+
+        return None
+
+    @classmethod
+    def _parse_object(
+        cls,
+        field_info: FieldInfo,
+        sexpr_data: List[SExprValue],
+        strictness: ParseStrictness,
+        parser: Optional[SExprParser] = None,
+        context: Optional[ParseContext] = None,
+    ) -> Optional[KiCadObject]:
+        """Parse KiCadObject using token name."""
+        if not field_info.token_name:
+            return None
+
+        for i, item in enumerate(sexpr_data):
+            if (
+                isinstance(item, list)
+                and item
+                and str(item[0]) == field_info.token_name
+            ):
+                # Mark as used for tracking (i+1 because index 0 is token name)
+                if parser:
+                    parser.mark_used(i + 1)
+                return field_info.inner_type._parse_sexpr(item, strictness, context)  # type: ignore[no-any-return]
+
+        return None
+
+    @classmethod
+    def _parse_list(
+        cls,
+        field_info: FieldInfo,
+        sexpr_data: List[SExprValue],
+        strictness: ParseStrictness,
+        parser: Optional[SExprParser] = None,
+        context: Optional[ParseContext] = None,
     ) -> List[Any]:
-        """Parse list of values recursively."""
+        """Parse list of values by collecting individual objects using SExprParser."""
         result = []
 
-        if cls._is_kicad_object(element_type):
-            token_name = getattr(element_type, "__token_name__", None)
-            if token_name:
-                # First check if there's a named list containing the objects
-                for item in sexpr_data:
+        if field_info.token_name:  # List of KiCadObjects
+            local_parser = SExprParser(sexpr_data)
+            matching_tokens = local_parser.get_list_of_tokens(field_info.token_name)
+
+            # Track each matching token in the original parser
+            if parser:
+                for i, item in enumerate(sexpr_data):
                     if (
                         isinstance(item, list)
-                        and len(item) > 1
-                        and str(item[0]) == field_name
+                        and item
+                        and str(item[0]) == field_info.token_name
                     ):
-                        # Found named list like (nested_list (simple_nested ...) (simple_nested ...))
-                        for nested_item in item[1:]:
-                            if (
-                                isinstance(nested_item, list)
-                                and nested_item
-                                and str(nested_item[0]) == token_name
-                            ):
-                                result.append(element_type._parse_sexpr(nested_item))
-                        break
+                        parser.mark_used(i + 1)
 
-                # If no named list found, search directly in sexpr_data (backward compatibility)
-                if not result:
-                    for item in sexpr_data:
-                        if (
-                            isinstance(item, list)
-                            and item
-                            and str(item[0]) == token_name
-                        ):
-                            result.append(element_type._parse_sexpr(item))
-        else:
-            # Handle list of primitives - look for named list tokens matching field_name
-            for item in sexpr_data:
+            for i, token_sexpr in enumerate(matching_tokens):
+                # Create index-specific context for list items
+                item_context = context.enter(f"[{i}]") if context else None
+                result.append(
+                    field_info.inner_type._parse_sexpr(token_sexpr, strictness, item_context)
+                )
+        else:  # List of primitives
+            for i, item in enumerate(sexpr_data):
                 if (
                     isinstance(item, list)
                     and len(item) > 1
-                    and str(item[0]) == field_name
+                    and str(item[0]) == field_info.name
                 ):
-                    # Found named list like (int_list 1 2 3)
-                    # Convert values to the appropriate type
+                    # Mark as used for tracking (i+1 because index 0 is token name)
+                    if parser:
+                        parser.mark_used(i + 1)
                     for value in item[1:]:
-                        converted_value = cls._convert_to_type(value, element_type)
-                        result.append(converted_value)
-                    break  # Only process the first matching list
+                        result.append(cls._convert_value(value, field_info.inner_type))
+                    break
 
         return result
 
     @classmethod
-    def _parse_kicad_object(
-        cls, object_type: Type[KiCadObject], sexpr_data: List[SExprValue]
-    ) -> Optional[KiCadObject]:
-        """Parse nested KiCadObject recursively."""
-        token_name = getattr(object_type, "__token_name__", None)
-        if not token_name:
-            return None
+    def _parse_optional_flag(
+        cls,
+        field_info: FieldInfo,
+        sexpr_data: List[SExprValue],
+        strictness: ParseStrictness,
+        parser: Optional[SExprParser] = None,
+    ) -> Optional[OptionalFlag]:
+        """Parse OptionalFlag by directly searching sexpr_data."""
+        flag_found = False
+        for i, item in enumerate(sexpr_data):
+            if str(item) == field_info.name:
+                flag_found = True
+                # Mark as used for tracking (i+1 because index 0 is token name)
+                if parser:
+                    parser.mark_used(i + 1)
+                break
 
-        # Find matching token in sexpr_data
-        for item in sexpr_data:
-            if isinstance(item, list) and item and str(item[0]) == token_name:
-                return object_type._parse_sexpr(item)
-
-        return None
-
-    @classmethod
-    def _parse_primitive_value(
-        cls, field_name: str, primitive_type: Type[Any], sexpr_data: List[SExprValue]
-    ) -> Any:
-        """Parse primitive value (int, str, float, bool) from S-expression data."""
-        # First, try to find a named field like (field_name value)
-        for item in sexpr_data:
-            if isinstance(item, list) and len(item) >= 2 and str(item[0]) == field_name:
-                value = item[1]  # Take the first value after field name
-                return cls._convert_to_type(value, primitive_type)
-
-        # For simple single-field objects, use the first non-list value
-        if len(sexpr_data) == 1 and not isinstance(sexpr_data[0], list):
-            return cls._convert_to_type(sexpr_data[0], primitive_type)
-
-        # If it's a multi-value token like (at 100 50 90), handle positional parsing
-        # Map field names to positions for common patterns
-        position_map = cls._get_field_position_map()
-        if field_name in position_map:
-            position = position_map[field_name]
-            if position < len(sexpr_data) and not isinstance(
-                sexpr_data[position], list
-            ):
-                return cls._convert_to_type(sexpr_data[position], primitive_type)
-            # If position is out of bounds, signal that field was not found
-            elif position >= len(sexpr_data):
-                return None  # Will be handled by _parse_field_value for optional fields
-
-        # Fallback: use the old behavior for backward compatibility
-        if sexpr_data and len(sexpr_data) > 0:
-            value = sexpr_data[0]
-            if not isinstance(value, list):
-                return cls._convert_to_type(value, primitive_type)
-
-        # Return default value if no suitable data found
-        return cls._get_default_value(primitive_type)
+        result = OptionalFlag(field_info.name)
+        result.found = flag_found
+        return result
 
     @classmethod
-    def _convert_to_type(cls, value: Any, target_type: Type[Any]) -> Any:
-        """Convert a value to the target type with proper error handling."""
+    def _convert_value(cls, value: Any, target_type: Type[Any]) -> Any:
+        """Convert value to target type with error handling."""
         if value is None:
-            return cls._get_default_value(target_type)
+            raise ValueError(f"Cannot convert None to {target_type.__name__}")
 
         try:
             if target_type == int:
@@ -263,166 +488,200 @@ class KiCadObject(ABC):
             elif target_type == float:
                 return float(value)
             elif target_type == bool:
-                # Convert to string first to handle Symbol objects
-                str_value = str(value).lower()
-                return str_value in ("yes", "true", "1")
-        except (ValueError, TypeError):
-            # If conversion fails, return default
-            pass
-
-        return cls._get_default_value(target_type)
-
-    @classmethod
-    def _get_default_value(cls, primitive_type: Type[Any]) -> Any:
-        """Get the default value for a primitive type."""
-        if primitive_type == int:
-            return 0
-        elif primitive_type == str:
-            return ""
-        elif primitive_type == float:
-            return 0.0
-        elif primitive_type == bool:
-            return False
-        return None
-
-    @classmethod
-    def _field_exists_in_sexpr(
-        cls, field_name: str, sexpr_data: List[SExprValue]
-    ) -> bool:
-        """Check if a field exists in the S-expression data."""
-        for item in sexpr_data:
-            if isinstance(item, list) and len(item) >= 1 and str(item[0]) == field_name:
-                return True
-        return False
-
-    @classmethod
-    def _get_field_position_map(cls) -> Dict[str, int]:
-        """Get field name to position mapping for multi-value tokens.
-
-        This enables proper parsing of tokens like (at x y angle) where:
-        - x is at position 0
-        - y is at position 1
-        - angle is at position 2
-
-        Subclasses can override this to define custom field mappings.
-        """
-        # Get all field names from the dataclass
-        field_names = [f.name for f in fields(cls)]
-
-        # Create default positional mapping
-        position_map = {}
-        for i, field_name in enumerate(field_names):
-            position_map[field_name] = i
-
-        return position_map
+                return str(value).lower() in ("yes", "true", "1")
+            elif isinstance(target_type, type) and issubclass(target_type, Enum):
+                # Handle enum conversion - try by value first, then by name
+                if isinstance(value, target_type):
+                    return value
+                try:
+                    return target_type(value)
+                except ValueError:
+                    # Try by name if value lookup failed
+                    return target_type[str(value).upper()]
+            else:
+                raise ValueError(f"Unsupported type: {target_type}")
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Cannot convert '{value}' to {target_type.__name__}: {e}")
 
     def to_sexpr(self) -> SExpr:
-        """Convert to S-expression."""
+        """Convert to S-expression using simple field iteration with named fields."""
         result: SExpr = [self.__token_name__]
+        field_infos = self._classify_fields()
+        field_defaults = {
+            f.name: f.default for f in fields(self) if f.default != MISSING
+        }
 
-        # Check if this is a multi-value token (all primitive fields)
-        all_fields = fields(self)
-        if self._is_multi_value_token():
-            # For multi-value tokens like (at x y angle), output values positionally
-            for field in all_fields:
-                value = getattr(self, field.name)
-                if value is not None:
-                    result.append(value)
-        else:
-            # For complex tokens, use named fields
-            for field in all_fields:
-                value = getattr(self, field.name)
-                if value is None:
+        for field_info in field_infos:
+            value = getattr(self, field_info.name)
+
+            if value is None:
+                is_optional_field = field_info.field_type in (
+                    FieldType.OPTIONAL_PRIMITIVE,
+                    FieldType.OPTIONAL_KICAD_OBJECT,
+                    FieldType.OPTIONAL_FLAG,
+                )
+                has_default = field_info.name in field_defaults
+
+                if is_optional_field or has_default:
                     continue
-
-                sexpr_value = self._value_to_sexpr(field.name, value)
-                if sexpr_value is not None:
-                    # Always append as single item - don't flatten KiCadObject lists
-                    result.append(sexpr_value)
+                else:
+                    raise ValueError(
+                        f"Required field '{field_info.name}' is None in {self.__class__.__name__}. "
+                        f"Field type: {field_info.field_type}"
+                    )
+            if isinstance(value, list):
+                # Unroll list items as individual S-expressions
+                for item in value:
+                    if isinstance(item, KiCadObject):
+                        result.append(item.to_sexpr())
+                    elif isinstance(item, Enum):
+                        result.append(item.value)
+                    else:
+                        result.append(item)
+            elif isinstance(value, KiCadObject):
+                result.append(value.to_sexpr())
+            elif isinstance(value, OptionalFlag):
+                # Only add the flag to the result if it was found
+                if value.found:
+                    result.append(value.expected_value)
+            else:
+                # Primitives as named fields: (field_name value)
+                # Convert enum to its value for serialization
+                if isinstance(value, Enum):
+                    result.append([field_info.name, value.value])
+                else:
+                    result.append([field_info.name, value])
 
         return result
 
-    def _is_multi_value_token(self) -> bool:
-        """Check if this is a multi-value token with only primitive fields."""
-        all_fields = fields(self)
-
-        # Must have at least 2 fields
-        if len(all_fields) < 2:
+    def __eq__(self, other: object) -> bool:
+        """Fast and robust equality comparison for KiCadObjects."""
+        if not isinstance(other, KiCadObject):
             return False
 
-        # All fields must be primitive types (not Optional, List, or KiCadObject)
-        for field in all_fields:
-            field_type = field.type
-            # Cast to Type[Any] to satisfy mypy
-            if isinstance(field_type, type):
-                if (
-                    self._is_optional(field_type)
-                    or self._is_list_type(field_type)
-                    or self._is_kicad_object(field_type)
-                ):
-                    return False
-                if field_type not in (int, str, float, bool):
-                    return False
-            else:
-                # If field_type is not a type, it's not a primitive type
+        if self.__class__ != other.__class__:
+            return False
+        field_infos = self._classify_fields()
+
+        for field_info in field_infos:
+            self_value = getattr(self, field_info.name)
+            other_value = getattr(other, field_info.name)
+
+            if (self_value is None) != (other_value is None):
                 return False
+
+            if self_value is None and other_value is None:
+                continue
+            if not isinstance(other_value, type(self_value)):
+                return False
+
+            if isinstance(self_value, list):
+                if len(self_value) != len(other_value):
+                    return False
+
+                for self_item, other_item in zip(self_value, other_value):
+                    if isinstance(self_item, KiCadObject):
+                        if not self_item.__eq__(other_item):  # Recursive comparison
+                            return False
+                    else:
+                        if self_item != other_item:
+                            return False
+
+            elif isinstance(self_value, KiCadObject):
+                if not self_value.__eq__(other_value):  # Recursive comparison
+                    return False
+
+            else:
+                if self_value != other_value:
+                    return False
 
         return True
 
-    def _value_to_sexpr(self, field_name: str, value: Any) -> Optional[SExprValue]:
-        """Convert field value to S-expression recursively."""
-        if value is None:
-            return None
-
-        # KiCadObject
-        if isinstance(value, KiCadObject):
-            return value.to_sexpr()
-
-        # List
-        if isinstance(value, list):
-            if value and isinstance(value[0], KiCadObject):
-                # List of KiCadObjects - wrap in named token
-                return [field_name] + [item.to_sexpr() for item in value]
-            else:
-                # List of primitives - wrap in named token
-                return [field_name] + list(value)
-
-        # Primitive - return value directly for simple single-field tokens
-        return value
+    def __hash__(self) -> int:
+        """Hash implementation - required when implementing __eq__."""
+        return hash((self.__class__.__name__, self.__token_name__))
 
     def to_sexpr_str(self, pretty_print: bool = True) -> str:
         """Convert to formatted S-expression string."""
         return sexpr_to_str(self.to_sexpr(), pretty_print=pretty_print)
 
-    # Simplified type checking helpers
-    @staticmethod
-    def _is_optional(field_type: Type[Any]) -> bool:
-        """Check if type is Optional[T]."""
-        return get_origin(field_type) is Union and type(None) in get_args(field_type)
+    def __str__(self) -> str:
+        """String representation showing only non-None values (except for required fields)."""
+        field_infos = self._classify_fields()
+        field_defaults = {
+            f.name: f.default for f in fields(self) if f.default != MISSING
+        }
 
-    @staticmethod
-    def _get_optional_inner_type(field_type: Type[Any]) -> Type[Any]:
-        """Extract T from Optional[T]."""
-        for arg in get_args(field_type):
-            if arg is not type(None):
-                return arg  # type: ignore[no-any-return]
-        return str  # Fallback to str type
+        non_none_fields = []
 
-    @staticmethod
-    def _is_list_type(field_type: Type[Any]) -> bool:
-        """Check if type is List[T]."""
-        return get_origin(field_type) in (list, List)
+        for field_info in field_infos:
+            value = getattr(self, field_info.name)
 
-    @staticmethod
-    def _get_list_element_type(field_type: Type[Any]) -> Type[Any]:
-        """Extract T from List[T]."""
-        args = get_args(field_type)
-        return args[0] if args else str
+            # Check if field is optional
+            is_optional_field = field_info.field_type in (
+                FieldType.OPTIONAL_PRIMITIVE,
+                FieldType.OPTIONAL_KICAD_OBJECT,
+                FieldType.OPTIONAL_FLAG,
+            )
+            has_default = field_info.name in field_defaults
 
-    @staticmethod
-    def _is_kicad_object(field_type: Type[Any]) -> bool:
-        """Check if type is a KiCadObject subclass."""
-        try:
-            return isinstance(field_type, type) and issubclass(field_type, KiCadObject)
-        except TypeError:
-            return False
+            # Show field if:
+            # 1. Value is not None (for any field), OR
+            # 2. Field is required (not optional and no default) even if None
+            # Skip optional fields that are None
+            if is_optional_field and value is None:
+                continue
+            elif value is not None or (not is_optional_field and not has_default):
+                # Format value for display
+                if isinstance(value, list) and len(value) == 0:
+                    # Skip empty lists for optional fields
+                    if is_optional_field or has_default:
+                        continue
+                    display_value = "[]"
+                elif isinstance(value, OptionalFlag):
+                    # Only show OptionalFlag if it was found
+                    if value.found:
+                        display_value = f"OptionalFlag({value.expected_value}=True)"
+                    else:
+                        continue
+                elif isinstance(value, KiCadObject):
+                    # Use the custom __str__ for nested KiCadObjects
+                    display_value = str(value)
+                elif isinstance(value, list):
+                    # Handle lists of KiCadObjects recursively
+                    if value and isinstance(value[0], KiCadObject):
+                        formatted_items = [str(item) for item in value]
+                        display_value = f"[{', '.join(formatted_items)}]"
+                    else:
+                        display_value = repr(value)
+                else:
+                    display_value = repr(value)
+
+                non_none_fields.append(f"{field_info.name}={display_value}")
+
+        return f"{self.__class__.__name__}({', '.join(non_none_fields)})"
+
+
+@dataclass
+class OptionalFlag:
+    """Simple flag container for optional string tokens in S-expressions.
+
+    This is not a KiCadObject but a helper class that tells the parser
+    to look for a specific string token in the S-expression data.
+
+    Examples:
+    - OptionalFlag("italic") looks for "italic" in (font (size 1.27 1.27) italic)
+    - OptionalFlag("unlocked") looks for "unlocked" in (fp_text reference "U1" (at 0 0) unlocked)
+    - OptionalFlag("mirror") looks for "mirror" in (justify left top mirror)
+
+    Args:
+        expected_value: The string token to search for
+        found: Whether the token was found during parsing
+    """
+
+    expected_value: str
+    found: bool = False
+
+    def __init__(self, expected_value: str):
+        self.expected_value = expected_value
+        self.found = False

@@ -3,8 +3,9 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from .base_element import KiCadObject
+from .base_element import KiCadObject, OptionalFlag
 from .base_types import At, Effects, Property
+from .enums import PinElectricalType, PinGraphicStyle
 
 
 @dataclass
@@ -139,11 +140,12 @@ class Pin(KiCadObject):
 
     __token_name__ = "pin"
 
-    electrical_type: str = field(
-        default="passive", metadata={"description": "Pin electrical type"}
+    electrical_type: PinElectricalType = field(
+        default=PinElectricalType.PASSIVE,
+        metadata={"description": "Pin electrical type"},
     )
-    graphic_style: str = field(
-        default="line", metadata={"description": "Pin graphic style"}
+    graphic_style: PinGraphicStyle = field(
+        default=PinGraphicStyle.LINE, metadata={"description": "Pin graphic style"}
     )
     at: At = field(
         default_factory=lambda: At(), metadata={"description": "Position and rotation"}
@@ -156,15 +158,15 @@ class Pin(KiCadObject):
         default=None,
         metadata={"description": "Pin name text effects", "required": False},
     )
-    number: Optional[str] = field(
+    number: Optional[Number] = field(
         default=None, metadata={"description": "Pin number", "required": False}
     )
     number_effects: Optional[Effects] = field(
         default=None,
         metadata={"description": "Pin number text effects", "required": False},
     )
-    hide: Optional[bool] = field(
-        default=None,
+    hide: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("hide"),
         metadata={"description": "Whether pin is hidden", "required": False},
     )
 
@@ -187,8 +189,8 @@ class PinNames(KiCadObject):
     offset: Optional[float] = field(
         default=None, metadata={"description": "Pin name offset", "required": False}
     )
-    hide: Optional[bool] = field(
-        default=None,
+    hide: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("hide"),
         metadata={"description": "Whether pin names are hidden", "required": False},
     )
 
@@ -207,8 +209,8 @@ class PinNumbers(KiCadObject):
 
     __token_name__ = "pin_numbers"
 
-    hide: Optional[bool] = field(
-        default=None,
+    hide: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("hide"),
         metadata={"description": "Whether pin numbers are hidden", "required": False},
     )
 
@@ -247,8 +249,9 @@ class Pintype(KiCadObject):
 
     __token_name__ = "pintype"
 
-    type: str = field(
-        default="passive", metadata={"description": "Pin electrical type"}
+    type: PinElectricalType = field(
+        default=PinElectricalType.PASSIVE,
+        metadata={"description": "Pin electrical type"},
     )
 
 
@@ -346,18 +349,19 @@ class Symbol(KiCadObject):
         default=True, metadata={"description": "Whether symbol is exported to PCB"}
     )
     properties: Optional[list[Property]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of symbol properties", "required": False},
     )
     graphic_items: Optional[list[Any]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of graphical items", "required": False},
     )
     pins: Optional[list[Pin]] = field(
-        default=None, metadata={"description": "List of symbol pins", "required": False}
+        default_factory=list,
+        metadata={"description": "List of symbol pins", "required": False},
     )
     units: Optional[list["Symbol"]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of child symbol units", "required": False},
     )
     unit_name: Optional[str] = field(

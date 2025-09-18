@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from .base_element import KiCadObject
-from .base_types import Fill, Pts
+from .base_types import Angle, Clearance, Fill, Pts
+from .enums import HatchStyle, SmoothingStyle, ZoneFillMode, ZoneKeepoutSetting
 from .primitive_graphics import Polygon
 
 
@@ -30,7 +31,10 @@ class ConnectPads(KiCadObject):
             "required": False,
         },
     )
-    clearance: float = field(default=0.0, metadata={"description": "Pad clearance"})
+    clearance: Clearance = field(
+        default_factory=lambda: Clearance(),
+        metadata={"description": "Pad clearance"},
+    )
 
 
 @dataclass
@@ -39,16 +43,19 @@ class Copperpour(KiCadObject):
 
     The 'copperpour' token defines copper pour properties in the format::
 
-        (copperpour PROPERTIES)
+        (copperpour VALUE)
+
+    where VALUE can be: not_allowed, allowed
 
     Args:
-        properties: Copper pour properties
+        value: Copper pour setting (not_allowed, allowed)
     """
 
     __token_name__ = "copperpour"
 
-    properties: dict[Any, Any] = field(
-        default_factory=dict, metadata={"description": "Copper pour properties"}
+    value: ZoneKeepoutSetting = field(
+        default=ZoneKeepoutSetting.NOT_ALLOWED,
+        metadata={"description": "Copper pour setting"},
     )
 
 
@@ -182,9 +189,9 @@ class Hatch(KiCadObject):
 
     __token_name__ = "hatch"
 
-    style: str = field(
-        default="edge",
-        metadata={"description": "Hatch display style (none | edge | full)"},
+    style: HatchStyle = field(
+        default=HatchStyle.EDGE,
+        metadata={"description": "Hatch display style"},
     )
     pitch: float = field(default=0.5, metadata={"description": "Hatch pitch distance"})
 
@@ -261,8 +268,9 @@ class HatchOrientation(KiCadObject):
 
     __token_name__ = "hatch_orientation"
 
-    angle: float = field(
-        default=0.0, metadata={"description": "Hatch line angle in degrees"}
+    angle: Angle = field(
+        default_factory=lambda: Angle(),
+        metadata={"description": "Hatch line angle in degrees"},
     )
 
 
@@ -412,24 +420,24 @@ class Keepout(KiCadObject):
 
     __token_name__ = "keepout"
 
-    tracks: str = field(
-        default="not_allowed",
+    tracks: ZoneKeepoutSetting = field(
+        default=ZoneKeepoutSetting.NOT_ALLOWED,
         metadata={"description": "Whether tracks should be excluded"},
     )
-    vias: str = field(
-        default="not_allowed",
+    vias: ZoneKeepoutSetting = field(
+        default=ZoneKeepoutSetting.NOT_ALLOWED,
         metadata={"description": "Whether vias should be excluded"},
     )
-    pads: str = field(
-        default="not_allowed",
+    pads: ZoneKeepoutSetting = field(
+        default=ZoneKeepoutSetting.NOT_ALLOWED,
         metadata={"description": "Whether pads should be excluded"},
     )
-    copperpour: str = field(
-        default="not_allowed",
+    copperpour: ZoneKeepoutSetting = field(
+        default=ZoneKeepoutSetting.NOT_ALLOWED,
         metadata={"description": "Whether copper pours should be excluded"},
     )
-    footprints: str = field(
-        default="not_allowed",
+    footprints: ZoneKeepoutSetting = field(
+        default=ZoneKeepoutSetting.NOT_ALLOWED,
         metadata={"description": "Whether footprints should be excluded"},
     )
 
@@ -503,8 +511,8 @@ class Mode(KiCadObject):
 
     __token_name__ = "mode"
 
-    mode: str = field(
-        default="solid", metadata={"description": "Fill mode (solid | hatched)"}
+    mode: ZoneFillMode = field(
+        default=ZoneFillMode.SOLID, metadata={"description": "Fill mode"}
     )
 
 
@@ -577,9 +585,9 @@ class Smoothing(KiCadObject):
 
     __token_name__ = "smoothing"
 
-    style: str = field(
-        default="none",
-        metadata={"description": "Corner smoothing style (chamfer | fillet)"},
+    style: SmoothingStyle = field(
+        default=SmoothingStyle.NONE,
+        metadata={"description": "Corner smoothing style"},
     )
 
 
@@ -667,10 +675,10 @@ class Zone(KiCadObject):
         default=None, metadata={"description": "Keepout settings", "required": False}
     )
     filled_polygons: Optional[list[FilledPolygon]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of fill polygons", "required": False},
     )
     filled_segments: Optional[list[FilledSegments]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of fill segments", "required": False},
     )

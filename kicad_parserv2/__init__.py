@@ -7,7 +7,7 @@ and follows a consistent structure for parsing and serialization.
 The classes are organized into logical modules based on dependencies:
 - base_element: Base KiCadObject class
 - enums: Common enumeration types for type safety
-- base_types: Fundamental types with no dependencies (36 classes)
+- base_types: Fundamental types with no dependencies (37 classes)
 - text_and_documents: Text and document elements (27 classes)
 - pad_and_drill: Pad and drill elements (17 classes)
 - primitive_graphics: Basic graphics primitives (8 classes)
@@ -18,7 +18,7 @@ The classes are organized into logical modules based on dependencies:
 - board_layout: PCB board design (14 classes)
 - schematic_system: Schematic drawing (13 classes)
 
-Total: 205 classes representing all KiCad S-expression tokens.
+Total: 207 classes representing all KiCad S-expression tokens.
 
 Usage:
     from kicad_parserv2 import At, Layer, Footprint
@@ -47,6 +47,7 @@ from .advanced_graphics import (
     GrText,
     GrTextBox,
     LeaderLength,
+    OverrideValue,
     Precision,
     RenderCache,
     SuppressZeros,
@@ -55,6 +56,8 @@ from .advanced_graphics import (
 
 # Base element
 from .base_element import KiCadObject
+from .base_element import ParseStrictness
+from .base_element import ParseStrictness as ParseMode
 
 # Base types (36 classes) - fundamental types with no cross-dependencies
 from .base_types import (
@@ -71,6 +74,7 @@ from .base_types import (
     Font,
     Height,
     Id,
+    Justify,
     Layer,
     Linewidth,
     Locked,
@@ -98,14 +102,13 @@ from .base_types import (
     Xyz,
 )
 
-# Board layout (14 classes) - dependencies: base_types
+# Board layout (15 classes) - dependencies: base_types
 from .board_layout import (
     General,
     Layers,
     NetName,
     Nets,
     Orientation,
-    OverrideValue,
     Path,
     PrivateLayers,
     Segment,
@@ -113,12 +116,15 @@ from .board_layout import (
     Tracks,
     Via,
     Vias,
+    ViaSize,
 )
 
 # Enums - common enumeration types for type safety
 from .enums import (
+    ClearanceType,
     FillType,
     FootprintTextType,
+    HatchStyle,
     JustifyHorizontal,
     JustifyVertical,
     LabelShape,
@@ -127,9 +133,12 @@ from .enums import (
     PadType,
     PinElectricalType,
     PinGraphicStyle,
+    SmoothingStyle,
     StrokeType,
     ViaType,
     ZoneConnection,
+    ZoneFillMode,
+    ZoneKeepoutSetting,
 )
 
 # Footprint library (12 classes) - dependencies: base_types, symbol_library, pad_and_drill
@@ -148,7 +157,7 @@ from .footprint_library import (
     Tags,
 )
 
-# Pad and drill elements (17 classes) - dependencies: base_types
+# Pad and drill elements (18 classes) - dependencies: base_types
 from .pad_and_drill import (
     Chamfer,
     ChamferRatio,
@@ -200,7 +209,6 @@ from .schematic_system import (
 
 # S-Expression Parser
 from .sexpr_parser import (
-    ParseResult,
     SExpr,
     SExprParser,
     SExprValue,
@@ -293,17 +301,20 @@ from .zone_system import (
 __all__ = [
     # Base
     "KiCadObject",
+    "ParseMode",
+    "ParseStrictness",
     # S-Expression Parser
     "SExprParser",
-    "ParseResult",
     "SExpr",
     "SExprValue",
     "parse_sexpr",
     "str_to_sexpr",
     "sexpr_to_str",
     # Enums
+    "ClearanceType",
     "FillType",
     "FootprintTextType",
+    "HatchStyle",
     "JustifyHorizontal",
     "JustifyVertical",
     "LabelShape",
@@ -312,10 +323,13 @@ __all__ = [
     "PadType",
     "PinElectricalType",
     "PinGraphicStyle",
+    "SmoothingStyle",
     "StrokeType",
     "ViaType",
     "ZoneConnection",
-    # Base types (36)
+    "ZoneFillMode",
+    "ZoneKeepoutSetting",
+    # Base types (37)
     "Anchor",
     "Angle",
     "At",
@@ -329,6 +343,7 @@ __all__ = [
     "Font",
     "Height",
     "Id",
+    "Justify",
     "Layer",
     "Linewidth",
     "Locked",
@@ -382,7 +397,7 @@ __all__ = [
     "TitleBlock",
     "TopMargin",
     "Version",
-    # Pad and drill (17)
+    # Pad and drill (18)
     "Chamfer",
     "ChamferRatio",
     "DieLength",
@@ -390,6 +405,7 @@ __all__ = [
     "Free",
     "Net",
     "Options",
+    "Clearance",
     "Pad",
     "Pads",
     "Primitives",
@@ -501,6 +517,7 @@ __all__ = [
     "Setup",
     "Tracks",
     "Via",
+    "ViaSize",
     "Vias",
     # Schematic system (13)
     "Bus",

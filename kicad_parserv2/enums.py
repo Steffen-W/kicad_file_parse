@@ -132,3 +132,40 @@ class ZoneConnection(Enum):
     SOLID = 1
     THERMAL_RELIEF = 2
     NONE = 3
+
+
+class ZoneFillMode(Enum):
+    """Zone fill modes."""
+
+    SOLID = "solid"
+    HATCHED = "hatched"
+
+
+class ZoneKeepoutSetting(Enum):
+    """Zone keepout settings."""
+
+    ALLOWED = "allowed"
+    NOT_ALLOWED = "not_allowed"
+
+
+class HatchStyle(Enum):
+    """Zone hatch display styles."""
+
+    NONE = "none"
+    EDGE = "edge"
+    FULL = "full"
+
+
+class SmoothingStyle(Enum):
+    """Zone corner smoothing styles."""
+
+    NONE = "none"
+    CHAMFER = "chamfer"
+    FILLET = "fillet"
+
+
+class ClearanceType(Enum):
+    """Custom pad clearance types."""
+
+    OUTLINE = "outline"
+    CONVEXHULL = "convexhull"

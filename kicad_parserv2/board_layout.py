@@ -5,11 +5,38 @@ from typing import Any, Optional
 
 from .advanced_graphics import GrText
 from .base_element import KiCadObject
-from .base_types import At, End, Property, Start
+from .base_types import (
+    At,
+    Diameter,
+    End,
+    Layer,
+    Locked,
+    Property,
+    Start,
+    Tstamp,
+    Width,
+)
 from .footprint_library import Footprint
 from .pad_and_drill import Net
 from .text_and_documents import Generator, Page, Version
 from .zone_system import Zone
+
+
+@dataclass
+class ViaSize(KiCadObject):
+    """Via size definition token.
+
+    The 'size' token for via defines a diameter value in the format::
+
+        (size DIAMETER)
+
+    Args:
+        diameter: The diameter value of the via
+    """
+
+    __token_name__ = "size"
+
+    diameter: float = field(default=0.0, metadata={"description": "Via diameter value"})
 
 
 @dataclass
@@ -141,11 +168,14 @@ class Segment(KiCadObject):
         default_factory=lambda: End(),
         metadata={"description": "Coordinates of the end of the line"},
     )
-    width: float = field(default=0.0, metadata={"description": "Line width"})
-    layer: str = field(
-        default="", metadata={"description": "Layer the track segment resides on"}
+    width: Width = field(
+        default_factory=lambda: Width(), metadata={"description": "Line width"}
     )
-    locked: Optional[bool] = field(
+    layer: Layer = field(
+        default_factory=lambda: Layer(),
+        metadata={"description": "Layer the track segment resides on"},
+    )
+    locked: Optional[Locked] = field(
         default=None,
         metadata={
             "description": "Whether the line cannot be edited",
@@ -155,8 +185,9 @@ class Segment(KiCadObject):
     net: int = field(
         default=0, metadata={"description": "Net ordinal number from net section"}
     )
-    tstamp: str = field(
-        default="", metadata={"description": "Unique identifier of the line object"}
+    tstamp: Tstamp = field(
+        default_factory=lambda: Tstamp(),
+        metadata={"description": "Unique identifier of the line object"},
     )
 
 
@@ -286,7 +317,7 @@ class Via(KiCadObject):
         default=None,
         metadata={"description": "Via type (blind | micro)", "required": False},
     )
-    locked: Optional[bool] = field(
+    locked: Optional[Locked] = field(
         default=None,
         metadata={
             "description": "Whether the line cannot be edited",
@@ -297,11 +328,13 @@ class Via(KiCadObject):
         default_factory=lambda: At(),
         metadata={"description": "Coordinates of the center of the via"},
     )
-    size: float = field(
-        default=0.0, metadata={"description": "Diameter of the via annular ring"}
+    size: ViaSize = field(
+        default_factory=lambda: ViaSize(),
+        metadata={"description": "Diameter of the via annular ring"},
     )
-    drill: float = field(
-        default=0.0, metadata={"description": "Drill diameter of the via"}
+    drill: Diameter = field(
+        default_factory=lambda: Diameter(),
+        metadata={"description": "Drill diameter of the via"},
     )
     layers: list[str] = field(
         default_factory=list, metadata={"description": "Layer set the via connects"}
@@ -324,8 +357,9 @@ class Via(KiCadObject):
     net: int = field(
         default=0, metadata={"description": "Net ordinal number from net section"}
     )
-    tstamp: str = field(
-        default="", metadata={"description": "Unique identifier of the line object"}
+    tstamp: Tstamp = field(
+        default_factory=lambda: Tstamp(),
+        metadata={"description": "Unique identifier of the line object"},
     )
 
 
@@ -385,23 +419,6 @@ class Orientation(KiCadObject):
     angle: float = field(
         default=0.0, metadata={"description": "Orientation angle in degrees"}
     )
-
-
-@dataclass
-class OverrideValue(KiCadObject):
-    """Override value definition token.
-
-    The 'override_value' token defines an override value in the format::
-
-        (override_value "VALUE")
-
-    Args:
-        value: Override value string
-    """
-
-    __token_name__ = "override_value"
-
-    value: str = field(default="", metadata={"description": "Override value string"})
 
 
 @dataclass

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from .base_element import KiCadObject
-from .base_types import At, Font, Id, Name, Pos, Size, Tstamp, Uuid, Xyz
+from .base_types import At, Font, Id, Locked, Name, Pos, Size, Uuid, Xyz
 
 
 @dataclass
@@ -224,9 +224,7 @@ class Tedit(KiCadObject):
 
     __token_name__ = "tedit"
 
-    timestamp: Tstamp = field(
-        default_factory=lambda: Tstamp(), metadata={"description": "Edit timestamp"}
-    )
+    timestamp: str = field(default="0", metadata={"description": "Edit timestamp"})
 
 
 @dataclass
@@ -267,7 +265,8 @@ class TitleBlock(KiCadObject):
         default=None, metadata={"description": "Company name", "required": False}
     )
     comments: Optional[list[Comment]] = field(
-        default=None, metadata={"description": "List of comments", "required": False}
+        default_factory=list,
+        metadata={"description": "List of comments", "required": False},
     )
 
 
@@ -587,7 +586,7 @@ class KicadWks(KiCadObject):
         default=None, metadata={"description": "Title block", "required": False}
     )
     elements: Optional[list[Any]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "List of worksheet elements", "required": False},
     )
 
@@ -679,7 +678,7 @@ class Image(KiCadObject):
     data: Optional[Data] = field(
         default=None, metadata={"description": "Image data", "required": False}
     )
-    locked: Optional[bool] = field(
+    locked: Optional[Locked] = field(
         default=None,
         metadata={"description": "Whether image is locked", "required": False},
     )

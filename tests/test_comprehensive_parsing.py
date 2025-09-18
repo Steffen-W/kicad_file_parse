@@ -17,7 +17,7 @@ from kicad_parserv2 import (
     text_and_documents,
     zone_system,
 )
-from kicad_parserv2.base_element import KiCadObject, register_kicad_type
+from kicad_parserv2.base_element import KiCadObject, ParseStrictness
 
 # Import the real KicadPcb class
 from kicad_parserv2.board_layout import KicadPcb
@@ -109,8 +109,8 @@ def test_comprehensive_parsing():
     print(f"Input S-expression length: {len(test_sexpr)} characters")
 
     try:
-        # Parse the PCB S-expression
-        pcb = KicadPcb.from_sexpr(test_sexpr)
+        # Parse the PCB S-expression with LENIENT mode for missing fields
+        pcb = KicadPcb.from_sexpr(test_sexpr, ParseStrictness.LENIENT)
         print(f"✅ Parsing completed successfully")
 
         # Debug: Print basic info
@@ -153,10 +153,11 @@ def test_comprehensive_parsing():
 
         print("✅ All basic structure tests passed")
 
-        # Test round-trip conversion
+        # Test round-trip conversion: LENIENT -> to_sexpr -> STRICT
         print("Testing round-trip conversion...")
         regenerated_sexpr = pcb.to_sexpr()
-        pcb2 = KicadPcb.from_sexpr(regenerated_sexpr)
+        # Parse the regenerated S-expression with STRICT mode (should work now since all fields are present)
+        pcb2 = KicadPcb.from_sexpr(regenerated_sexpr, ParseStrictness.STRICT)
 
         # Verify round-trip works (skip version comparison for now - complex serialization issue)
         # assert pcb2.version.version == pcb.version.version, "Round-trip version mismatch"

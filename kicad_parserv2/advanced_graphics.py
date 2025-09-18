@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from . import text_and_documents
-from .base_element import KiCadObject
+from .base_element import KiCadObject, OptionalFlag
 from .base_types import (
+    Angle,
     At,
     Center,
     Effects,
@@ -21,6 +22,7 @@ from .base_types import (
     Style,
     Tstamp,
     Type,
+    Units,
     Uuid,
     Width,
 )
@@ -350,7 +352,7 @@ class GrTextBox(KiCadObject):
             "required": False,
         },
     )
-    angle: Optional[float] = field(
+    angle: Optional[Angle] = field(
         default=None,
         metadata={
             "description": "Rotation of the text box in degrees",
@@ -380,6 +382,23 @@ class GrTextBox(KiCadObject):
             "required": False,
         },
     )
+
+
+@dataclass
+class OverrideValue(KiCadObject):
+    """Override value definition token.
+
+    The 'override_value' token defines an override value in the format::
+
+        (override_value "VALUE")
+
+    Args:
+        value: Override value string
+    """
+
+    __token_name__ = "override_value"
+
+    value: str = field(default="", metadata={"description": "Override value string"})
 
 
 @dataclass
@@ -418,8 +437,8 @@ class Format(KiCadObject):
     suffix: Optional[text_and_documents.Suffix] = field(
         default=None, metadata={"description": "Text suffix", "required": False}
     )
-    units: int = field(
-        default=2,
+    units: Units = field(
+        default_factory=lambda: Units(),
         metadata={"description": "Units type (0=inches, 1=mils, 2=mm, 3=auto)"},
     )
     units_format: UnitsFormat = field(
@@ -430,7 +449,7 @@ class Format(KiCadObject):
         default_factory=lambda: Precision(),
         metadata={"description": "Precision digits"},
     )
-    override_value: Optional[str] = field(
+    override_value: Optional[OverrideValue] = field(
         default=None, metadata={"description": "Override text value", "required": False}
     )
     suppress_zeros: Optional[SuppressZeros] = field(
@@ -501,13 +520,13 @@ class Dimension(KiCadObject):
         default=None,
         metadata={"description": "Height for aligned dimensions", "required": False},
     )
-    orientation: Optional[float] = field(
+    orientation: Optional[Angle] = field(
         default=None,
         metadata={
             "description": "Orientation angle for orthogonal dimensions",
             "required": False,
         },
-    )
+    )  # todo: use orientation
     leader_length: Optional[LeaderLength] = field(
         default=None,
         metadata={
@@ -600,7 +619,7 @@ class FpCircle(KiCadObject):
             (end X Y)
             (layer LAYER)
             (width WIDTH)
-            [tstamp UUID]
+            [(tstamp UUID)]
         )
 
     Args:
@@ -653,7 +672,7 @@ class FpCurve(KiCadObject):
             (pts (xy X Y) (xy X Y) (xy X Y) (xy X Y))
             (layer LAYER)
             (width WIDTH)
-            [tstamp UUID]
+            [(tstamp UUID)]
         )
 
     Args:
@@ -699,7 +718,7 @@ class FpLine(KiCadObject):
             (end X Y)
             (layer LAYER)
             (width WIDTH)
-            [tstamp UUID]
+            [(tstamp UUID)]
         )
 
     Args:
@@ -748,7 +767,7 @@ class FpPoly(KiCadObject):
             (pts (xy X Y) ...)
             (layer LAYER)
             (width WIDTH)
-            [tstamp UUID]
+            [(tstamp UUID)]
         )
 
     Args:
@@ -891,8 +910,8 @@ class FpText(KiCadObject):
         default_factory=lambda: At(),
         metadata={"description": "Position and rotation coordinates"},
     )
-    unlocked: Optional[bool] = field(
-        default=None,
+    unlocked: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("unlocked"),
         metadata={
             "description": "Whether text orientation can be other than upright",
             "required": False,
@@ -901,8 +920,8 @@ class FpText(KiCadObject):
     layer: Layer = field(
         default_factory=lambda: Layer(), metadata={"description": "Layer definition"}
     )
-    hide: Optional[bool] = field(
-        default=None,
+    hide: Optional[OptionalFlag] = field(
+        default_factory=lambda: OptionalFlag("hide"),
         metadata={"description": "Whether text is hidden", "required": False},
     )
     effects: Effects = field(
@@ -978,7 +997,7 @@ class FpTextBox(KiCadObject):
             "required": False,
         },
     )
-    angle: Optional[float] = field(
+    angle: Optional[Angle] = field(
         default=None,
         metadata={
             "description": "Rotation of the text box in degrees",

@@ -124,7 +124,7 @@ class GlobalLabel(KiCadObject):
         default="", metadata={"description": "Universally unique identifier"}
     )
     properties: Optional[list[Property]] = field(
-        default=None,
+        default_factory=list,
         metadata={"description": "Properties of the global label", "required": False},
     )
 
@@ -272,7 +272,8 @@ class Sheet(KiCadObject):
         default_factory=list, metadata={"description": "List of properties"}
     )
     pins: Optional[list[Pin]] = field(
-        default=None, metadata={"description": "List of sheet pins", "required": False}
+        default_factory=list,
+        metadata={"description": "List of sheet pins", "required": False},
     )
 
 
