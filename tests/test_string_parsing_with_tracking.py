@@ -36,7 +36,7 @@ def test_string_parsing_with_complete_mode_success():
         sexpr_data = str_to_sexpr(test_case["string"])
 
         # Should parse successfully in COMPLETE mode
-        obj = test_case["class"]._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+        obj = test_case["class"].from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
         # Verify values
         for attr, expected_value in test_case["expected_values"].items():
@@ -70,7 +70,7 @@ def test_string_parsing_with_complete_mode_unused_parameters():
 
         # Should raise ValueError for unused parameters in COMPLETE mode
         with pytest.raises(ValueError, match="Unused parameters"):
-            test_case["class"]._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+            test_case["class"].from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
 
 def test_string_parsing_other_strictness_modes():
@@ -86,7 +86,7 @@ def test_string_parsing_other_strictness_modes():
         ParseStrictness.LENIENT,
         ParseStrictness.PERMISSIVE,
     ]:
-        at_obj = At._parse_sexpr(sexpr_data, strictness)
+        at_obj = At.from_sexpr(sexpr_data, strictness)
         assert at_obj.x == 5.0
         assert at_obj.y == 15.0
         assert at_obj.angle == 45.0
@@ -102,7 +102,7 @@ def test_complex_string_parsing_with_nested_structures():
     print(f"\nParsed S-expression from '{simple_string}': {sexpr_data}")
 
     # Should parse successfully
-    at_obj = At._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+    at_obj = At.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
     assert at_obj.x == 0.0
     assert at_obj.y == 0.0
     # angle is optional and will be None when not provided
@@ -126,7 +126,7 @@ def test_string_parsing_error_handling():
             sexpr_data = str_to_sexpr(invalid_string)
             # If parsing succeeds, test that the object parsing handles it gracefully
             try:
-                At._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+                At.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
             except (ValueError, TypeError) as e:
                 print(f"   Expected error in object parsing: {e}")
         except ValueError as e:
@@ -174,7 +174,7 @@ def test_real_world_string_parsing_scenario():
             total_analyzed += 1
 
             try:
-                obj = obj_class._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+                obj = obj_class.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
                 print(f"   ✓ Complete: All parameters consumed")
             except ValueError as e:
                 gaps_found += 1
@@ -236,7 +236,7 @@ def test_direct_class_parsing_from_string():
 
         # Step 2: Parse S-expression to KiCad object with COMPLETE tracking
         try:
-            obj = test_case["class"]._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+            obj = test_case["class"].from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
             if test_case["should_succeed"]:
                 print(f"✓ SUCCESS: Object parsed correctly")
                 print(f"   Result: {obj}")
@@ -251,7 +251,7 @@ def test_direct_class_parsing_from_string():
 
         # Step 3: Show that other modes work regardless
         try:
-            obj_lenient = test_case["class"]._parse_sexpr(
+            obj_lenient = test_case["class"].from_sexpr(
                 sexpr_data, ParseStrictness.LENIENT
             )
             print(f"   LENIENT mode: ✓ Always succeeds - {obj_lenient}")

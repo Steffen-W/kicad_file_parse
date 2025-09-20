@@ -3,9 +3,10 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from .base_element import KiCadObject, OptionalFlag
+from .base_element import KiCadObject, OptionalFlag, ParseStrictness
 from .base_types import At, Effects, Property
 from .enums import PinElectricalType, PinGraphicStyle
+from .text_and_documents import Generator, Version
 
 
 @dataclass
@@ -389,3 +390,64 @@ class LibSymbols(KiCadObject):
     symbols: list[Symbol] = field(
         default_factory=list, metadata={"description": "List of symbols"}
     )
+
+
+@dataclass
+class KicadSymbolLib(KiCadObject):
+    """KiCad symbol library file definition.
+
+    The 'kicad_symbol_lib' token defines a complete symbol library file in the format::
+
+        (kicad_symbol_lib
+            (version VERSION)
+            (generator GENERATOR)
+            ;; symbol definitions...
+        )
+
+    Args:
+        version: File format version
+        generator: Generator application name
+        symbols: List of symbol definitions (optional)
+    """
+
+    __token_name__ = "kicad_symbol_lib"
+
+    version: Version = field(
+        default_factory=lambda: Version(),
+        metadata={"description": "File format version"},
+    )
+    generator: Generator = field(
+        default_factory=lambda: Generator(),
+        metadata={"description": "Generator application name"},
+    )
+    symbols: Optional[list[Symbol]] = field(
+        default_factory=list,
+        metadata={"description": "List of symbol definitions", "required": False},
+    )
+
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str,
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        encoding: str = "utf-8",
+    ) -> "KicadSymbolLib":
+        """Parse from S-expression file - convenience method for symbol library operations."""
+        if not file_path.endswith(".kicad_sym"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_sym")
+        with open(file_path, "r", encoding=encoding) as f:
+            content = f.read()
+        return cls.from_str(content, strictness)
+
+    def save_to_file(self, file_path: str, encoding: str = "utf-8") -> None:
+        """Save to .kicad_sym file format.
+
+        Args:
+            file_path: Path to write the .kicad_sym file
+            encoding: File encoding (default: utf-8)
+        """
+        if not file_path.endswith(".kicad_sym"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_sym")
+        content = self.to_sexpr_str(pretty_print=True)
+        with open(file_path, "w", encoding=encoding) as f:
+            f.write(content)

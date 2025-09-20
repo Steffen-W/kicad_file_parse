@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from .advanced_graphics import GrText
-from .base_element import KiCadObject
+from .base_element import KiCadObject, ParseStrictness
 from .base_types import (
     At,
     Diameter,
@@ -527,3 +527,30 @@ class KicadPcb(KiCadObject):
     zones: list[Zone] = field(
         default_factory=list, metadata={"description": "Zone definitions"}
     )
+
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str,
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        encoding: str = "utf-8",
+    ) -> "KicadPcb":
+        """Parse from S-expression file - convenience method for PCB operations."""
+        if not file_path.endswith(".kicad_pcb"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_pcb")
+        with open(file_path, "r", encoding=encoding) as f:
+            content = f.read()
+        return cls.from_str(content, strictness)
+
+    def save_to_file(self, file_path: str, encoding: str = "utf-8") -> None:
+        """Save to .kicad_pcb file format.
+
+        Args:
+            file_path: Path to write the .kicad_pcb file
+            encoding: File encoding (default: utf-8)
+        """
+        if not file_path.endswith(".kicad_pcb"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_pcb")
+        content = self.to_sexpr_str(pretty_print=True)
+        with open(file_path, "w", encoding=encoding) as f:
+            f.write(content)

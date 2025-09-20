@@ -43,7 +43,7 @@ def test_complete_parameter_tracking_functionality():
     print(f"   Good S-expression: {good_sexpr}")
 
     try:
-        at_obj = At._parse_sexpr(good_sexpr, ParseStrictness.COMPLETE)
+        at_obj = At.from_sexpr(good_sexpr, ParseStrictness.COMPLETE)
         print(
             f"   ✓ SUCCESS: Parsed successfully - x={at_obj.x}, y={at_obj.y}, angle={at_obj.angle}"
         )
@@ -55,7 +55,7 @@ def test_complete_parameter_tracking_functionality():
     print(f"   Bad S-expression: {bad_sexpr}")
 
     try:
-        at_obj = At._parse_sexpr(bad_sexpr, ParseStrictness.COMPLETE)
+        at_obj = At.from_sexpr(bad_sexpr, ParseStrictness.COMPLETE)
         print(f"   ✗ UNEXPECTED SUCCESS: This should have failed!")
     except ValueError as e:
         print(f"   ✓ EXPECTED FAILURE: {e}")
@@ -87,7 +87,7 @@ def test_complete_parameter_tracking_functionality():
         print(f"   S-expression: {test_case['sexpr']}")
 
         try:
-            obj = test_case["class"]._parse_sexpr(
+            obj = test_case["class"].from_sexpr(
                 test_case["sexpr"], ParseStrictness.COMPLETE
             )
             print(f"   ✗ No gaps detected (unexpected)")
@@ -96,7 +96,7 @@ def test_complete_parameter_tracking_functionality():
 
         # Show that other modes don't detect gaps
         try:
-            obj = test_case["class"]._parse_sexpr(
+            obj = test_case["class"].from_sexpr(
                 test_case["sexpr"], ParseStrictness.LENIENT
             )
             print(f"   ▶ LENIENT mode: Parses successfully (gaps hidden)")
@@ -119,7 +119,7 @@ def test_complete_parameter_tracking_functionality():
 
     for mode in modes:
         try:
-            size_obj = Size._parse_sexpr(test_sexpr, mode)
+            size_obj = Size.from_sexpr(test_sexpr, mode)
             print(
                 f"   ✓ {mode.value.upper()}: Success - width={size_obj.width}, height={size_obj.height}"
             )
@@ -160,7 +160,7 @@ def test_complete_parameter_tracking_functionality():
         total_analyzed += 1
 
         try:
-            obj = obj_class._parse_sexpr(expr, ParseStrictness.COMPLETE)
+            obj = obj_class.from_sexpr(expr, ParseStrictness.COMPLETE)
             print(f"   Expression {i+1}: ✓ Complete")
         except ValueError:
             gaps_found += 1

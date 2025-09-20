@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from .base_element import KiCadObject
+from .base_element import KiCadObject, ParseStrictness
 from .base_types import At, Font, Id, Locked, Name, Pos, Size, Uuid, Xyz
 
 
@@ -589,6 +589,33 @@ class KicadWks(KiCadObject):
         default_factory=list,
         metadata={"description": "List of worksheet elements", "required": False},
     )
+
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str,
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        encoding: str = "utf-8",
+    ) -> "KicadWks":
+        """Parse from S-expression file - convenience method for worksheet operations."""
+        if not file_path.endswith(".kicad_wks"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_wks")
+        with open(file_path, "r", encoding=encoding) as f:
+            content = f.read()
+        return cls.from_str(content, strictness)
+
+    def save_to_file(self, file_path: str, encoding: str = "utf-8") -> None:
+        """Save to .kicad_wks file format.
+
+        Args:
+            file_path: Path to write the .kicad_wks file
+            encoding: File encoding (default: utf-8)
+        """
+        if not file_path.endswith(".kicad_wks"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_wks")
+        content = self.to_sexpr_str(pretty_print=True)
+        with open(file_path, "w", encoding=encoding) as f:
+            f.write(content)
 
 
 # Image related elements

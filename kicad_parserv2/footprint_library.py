@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .base_element import KiCadObject
+from .base_element import KiCadObject, ParseStrictness
 from .base_types import At, Clearance, Layer, Locked, Property, Rotate, Uuid, Width, Xyz
 from .pad_and_drill import Pad
 from .text_and_documents import Scale, Tedit
@@ -402,6 +402,33 @@ class Footprint(KiCadObject):
         default_factory=list,
         metadata={"description": "List of 3D models", "required": False},
     )
+
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str,
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        encoding: str = "utf-8",
+    ) -> "Footprint":
+        """Parse from S-expression file - convenience method for footprint operations."""
+        if not file_path.endswith(".kicad_mod"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_mod")
+        with open(file_path, "r", encoding=encoding) as f:
+            content = f.read()
+        return cls.from_str(content, strictness)
+
+    def save_to_file(self, file_path: str, encoding: str = "utf-8") -> None:
+        """Save to .kicad_mod file format.
+
+        Args:
+            file_path: Path to write the .kicad_mod file
+            encoding: File encoding (default: utf-8)
+        """
+        if not file_path.endswith(".kicad_mod"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_mod")
+        content = self.to_sexpr_str(pretty_print=True)
+        with open(file_path, "w", encoding=encoding) as f:
+            f.write(content)
 
 
 @dataclass

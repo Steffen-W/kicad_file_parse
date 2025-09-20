@@ -3,9 +3,10 @@
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from .base_element import KiCadObject
-from .base_types import At, Color, Effects, Fill, Property, Pts, Size, Stroke
-from .symbol_library import Pin
+from .base_element import KiCadObject, ParseStrictness
+from .base_types import At, Color, Effects, Fill, Property, Pts, Size, Stroke, Uuid
+from .symbol_library import LibSymbols, Pin
+from .text_and_documents import Generator, Version
 
 
 @dataclass
@@ -397,3 +398,116 @@ class Repeat(KiCadObject):
     __token_name__ = "repeat"
 
     value: int = field(default=1, metadata={"description": "Repeat value"})
+
+
+@dataclass
+class KicadSch(KiCadObject):
+    """KiCad schematic file definition.
+
+    The 'kicad_sch' token defines a complete schematic file in the format::
+
+        (kicad_sch
+            (version VERSION)
+            (generator GENERATOR)
+            (uuid UNIQUE_IDENTIFIER)
+            (lib_symbols ...)
+            ;; schematic elements...
+        )
+
+    Args:
+        version: File format version
+        generator: Generator application name
+        uuid: Universally unique identifier for the schematic
+        lib_symbols: Symbol library container (optional)
+        junctions: List of junctions (optional)
+        no_connects: List of no connect markers (optional)
+        bus_entries: List of bus entries (optional)
+        wires: List of wires (optional)
+        buses: List of buses (optional)
+        labels: List of labels (optional)
+        global_labels: List of global labels (optional)
+        sheets: List of hierarchical sheets (optional)
+        instances: List of symbol instances (optional)
+    """
+
+    __token_name__ = "kicad_sch"
+
+    version: Version = field(
+        default_factory=lambda: Version(),
+        metadata={"description": "File format version"},
+    )
+    generator: Generator = field(
+        default_factory=lambda: Generator(),
+        metadata={"description": "Generator application name"},
+    )
+    uuid: Uuid = field(
+        default_factory=lambda: Uuid(),
+        metadata={"description": "Universally unique identifier for the schematic"},
+    )
+    lib_symbols: Optional[LibSymbols] = field(
+        default=None,
+        metadata={"description": "Symbol library container", "required": False},
+    )
+    junctions: Optional[list[Junction]] = field(
+        default_factory=list,
+        metadata={"description": "List of junctions", "required": False},
+    )
+    no_connects: Optional[list[NoConnect]] = field(
+        default_factory=list,
+        metadata={"description": "List of no connect markers", "required": False},
+    )
+    bus_entries: Optional[list[BusEntry]] = field(
+        default_factory=list,
+        metadata={"description": "List of bus entries", "required": False},
+    )
+    wires: Optional[list[Wire]] = field(
+        default_factory=list,
+        metadata={"description": "List of wires", "required": False},
+    )
+    buses: Optional[list[Bus]] = field(
+        default_factory=list,
+        metadata={"description": "List of buses", "required": False},
+    )
+    labels: Optional[list[Label]] = field(
+        default_factory=list,
+        metadata={"description": "List of labels", "required": False},
+    )
+    global_labels: Optional[list[GlobalLabel]] = field(
+        default_factory=list,
+        metadata={"description": "List of global labels", "required": False},
+    )
+    sheets: Optional[list[Sheet]] = field(
+        default_factory=list,
+        metadata={"description": "List of hierarchical sheets", "required": False},
+    )
+    instances: Optional[list[Any]] = field(
+        default_factory=list,
+        metadata={"description": "List of symbol instances", "required": False},
+    )
+
+    @classmethod
+    def from_file(
+        cls,
+        file_path: str,
+        strictness: ParseStrictness = ParseStrictness.STRICT,
+        encoding: str = "utf-8",
+    ) -> "KicadSch":
+        """Parse from S-expression file - convenience method for schematic operations."""
+        if not file_path.endswith(".kicad_sch"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_sch")
+        with open(file_path, "r", encoding=encoding) as f:
+            content = f.read()
+        return cls.from_str(content, strictness)
+
+    def save_to_file(self, file_path: str, encoding: str = "utf-8") -> None:
+        """Save to .kicad_sch file format.
+
+        Args:
+            file_path: Path to write the .kicad_sch file
+            encoding: File encoding (default: utf-8)
+        """
+        if not file_path.endswith(".kicad_sch"):
+            raise ValueError("Unsupported file extension. Expected: .kicad_sch")
+        content = self.to_sexpr_str(pretty_print=True)
+        with open(file_path, "w", encoding=encoding) as f:
+            f.write(content)

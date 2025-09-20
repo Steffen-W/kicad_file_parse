@@ -169,3 +169,66 @@ class ClearanceType(Enum):
 
     OUTLINE = "outline"
     CONVEXHULL = "convexhull"
+
+
+class SeverityLevel(Enum):
+    """Design rule severity levels."""
+
+    ERROR = "error"
+    WARNING = "warning"
+    IGNORE = "ignore"
+    EXCLUSION = "exclusion"
+
+
+class ConstraintType(Enum):
+    """Design rule constraint types."""
+
+    # Clearance Constraints
+    CLEARANCE = "clearance"
+    HOLE_CLEARANCE = "hole_clearance"
+    EDGE_CLEARANCE = "edge_clearance"
+    SILK_CLEARANCE = "silk_clearance"
+    COURTYARD_CLEARANCE = "courtyard_clearance"
+    HOLE_TO_HOLE = "hole_to_hole"
+    PHYSICAL_CLEARANCE = "physical_clearance"
+    PHYSICAL_HOLE_CLEARANCE = "physical_hole_clearance"
+    CREEPAGE = "creepage"
+
+    # Size Constraints
+    TRACK_WIDTH = "track_width"
+    VIA_DIAMETER = "via_diameter"
+    HOLE_SIZE = "hole_size"
+    ANNULAR_WIDTH = "annular_width"
+    CONNECTION_WIDTH = "connection_width"
+
+    # Thermal Constraints
+    THERMAL_RELIEF_GAP = "thermal_relief_gap"
+    THERMAL_SPOKE_WIDTH = "thermal_spoke_width"
+    MIN_RESOLVED_SPOKES = "min_resolved_spokes"
+
+    # Zone Constraints
+    ZONE_CONNECTION = "zone_connection"
+
+    # Disallow Constraints
+    DISALLOW = "disallow"
+
+    # Length Constraints
+    LENGTH = "length"
+    SKEW = "skew"
+
+    # Differential Pair Constraints
+    DIFF_PAIR_GAP = "diff_pair_gap"
+    DIFF_PAIR_UNCOUPLED = "diff_pair_uncoupled"
+
+    # Via Constraints
+    VIA_DRILL = "via_drill"
+    BLIND_VIA_RATIO = "blind_via_ratio"
+    MICRO_VIA_DIAMETER = "micro_via_diameter"
+    MICRO_VIA_DRILL = "micro_via_drill"
+
+    # Text Constraints
+    TEXT_HEIGHT = "text_height"
+    TEXT_THICKNESS = "text_thickness"
+
+    # Assertion Constraints
+    ASSERTION = "assertion"

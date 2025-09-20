@@ -194,7 +194,7 @@ def test_code_coverage_verification():
 
     # Test error cases
     if pytest:
-        with pytest.raises(ValueError, match="Invalid S-expression"):
+        with pytest.raises(ValueError, match="Token mismatch"):
             base_types.Layer.from_sexpr([])  # Empty list
 
         with pytest.raises(ValueError, match="Token mismatch"):
@@ -205,7 +205,7 @@ def test_code_coverage_verification():
             base_types.Layer.from_sexpr([])
             assert False, "Should have raised ValueError"
         except ValueError as e:
-            assert "Invalid S-expression" in str(e)
+            assert "Token mismatch" in str(e)
 
         try:
             base_types.Layer.from_sexpr(["wrong_token", "value"])

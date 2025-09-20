@@ -12,11 +12,11 @@ class TestOptionalFlag:
     def test_optional_flag_creation(self):
         """Test OptionalFlag creation and attributes."""
         flag = OptionalFlag("italic")
-        assert flag.expected_value == "italic"
-        assert flag.found == False
+        assert flag._value_ == "italic"
+        assert flag.is_present() == False
 
-        flag.found = True
-        assert flag.found == True
+        flag.__found__ = True
+        assert flag.is_present() == True
 
     def test_optional_flag_different_values(self):
         """Test OptionalFlag with different expected values."""
@@ -24,9 +24,9 @@ class TestOptionalFlag:
         italic_flag = OptionalFlag("italic")
         locked_flag = OptionalFlag("locked")
 
-        assert bold_flag.expected_value == "bold"
-        assert italic_flag.expected_value == "italic"
-        assert locked_flag.expected_value == "locked"
+        assert bold_flag._value_ == "bold"
+        assert italic_flag._value_ == "italic"
+        assert locked_flag._value_ == "locked"
 
     def test_optional_flag_equality(self):
         """Test OptionalFlag equality comparison."""
@@ -36,13 +36,13 @@ class TestOptionalFlag:
         assert flag1 == flag2
 
         # Same expected value, both found
-        flag1.found = True
-        flag2.found = True
+        flag1.__found__ = True
+        flag2.__found__ = True
         assert flag1 == flag2
 
         # Same expected value, one found, one not found
-        flag1.found = True
-        flag2.found = False
+        flag1.__found__ = True
+        flag2.__found__ = False
         assert flag1 != flag2
 
         # Different expected values
@@ -51,8 +51,8 @@ class TestOptionalFlag:
         assert flag3 != flag4
 
         # Different expected values, both found
-        flag3.found = True
-        flag4.found = True
+        flag3.__found__ = True
+        flag4.__found__ = True
         assert flag3 != flag4
 
 
@@ -69,12 +69,12 @@ class TestFontOptionalFlags:
 
         # Check that flags are not found
         assert font.bold is not None
-        assert font.bold.expected_value == "bold"
-        assert font.bold.found == False
+        assert font.bold._value_ == "bold"
+        assert font.bold.is_present() == False
 
         assert font.italic is not None
-        assert font.italic.expected_value == "italic"
-        assert font.italic.found == False
+        assert font.italic._value_ == "italic"
+        assert font.italic.is_present() == False
 
         # Convert back to S-expression
         result_sexpr = font.to_sexpr()
@@ -96,12 +96,12 @@ class TestFontOptionalFlags:
 
         # Check that italic flag is found, bold is not
         assert font.italic is not None
-        assert font.italic.expected_value == "italic"
-        assert font.italic.found == True
+        assert font.italic._value_ == "italic"
+        assert font.italic.is_present() == True
 
         assert font.bold is not None
-        assert font.bold.expected_value == "bold"
-        assert font.bold.found == False
+        assert font.bold._value_ == "bold"
+        assert font.bold.is_present() == False
 
         # Convert back to S-expression
         result_sexpr = font.to_sexpr()
@@ -121,12 +121,12 @@ class TestFontOptionalFlags:
 
         # Check that bold flag is found, italic is not
         assert font.bold is not None
-        assert font.bold.expected_value == "bold"
-        assert font.bold.found == True
+        assert font.bold._value_ == "bold"
+        assert font.bold.is_present() == True
 
         assert font.italic is not None
-        assert font.italic.expected_value == "italic"
-        assert font.italic.found == False
+        assert font.italic._value_ == "italic"
+        assert font.italic.is_present() == False
 
         # Convert back to S-expression
         result_sexpr = font.to_sexpr()
@@ -146,12 +146,12 @@ class TestFontOptionalFlags:
 
         # Check that both flags are found
         assert font.bold is not None
-        assert font.bold.expected_value == "bold"
-        assert font.bold.found == True
+        assert font.bold._value_ == "bold"
+        assert font.bold.is_present() == True
 
         assert font.italic is not None
-        assert font.italic.expected_value == "italic"
-        assert font.italic.found == True
+        assert font.italic._value_ == "italic"
+        assert font.italic.is_present() == True
 
         # Convert back to S-expression
         result_sexpr = font.to_sexpr()
@@ -170,8 +170,8 @@ class TestFontOptionalFlags:
         font = Font.from_sexpr(sexpr_str)
 
         # Check that both flags are found regardless of order
-        assert font.bold.found == True
-        assert font.italic.found == True
+        assert font.bold.is_present() == True
+        assert font.italic.is_present() == True
 
         # Convert back to S-expression
         result_sexpr = font.to_sexpr()
@@ -189,7 +189,7 @@ class TestFontOptionalFlags:
         font.thickness = Thickness(value=0.254)
 
         # Set italic flag as found
-        font.italic.found = True
+        font.italic.__found__ = True
 
         # Convert to S-expression
         result_sexpr = font.to_sexpr()
@@ -244,10 +244,10 @@ class TestNestedOptionalFlagEquality:
         assert effects1 == effects2
 
         # Verify font bold flag is set in both
-        assert effects1.font.bold.found == True
-        assert effects2.font.bold.found == True
-        assert effects1.font.italic.found == False
-        assert effects2.font.italic.found == False
+        assert effects1.font.bold.is_present() == True
+        assert effects2.font.bold.is_present() == True
+        assert effects1.font.italic.is_present() == False
+        assert effects2.font.italic.is_present() == False
 
     def test_nested_optional_flag_equality_different_flags(self):
         """Test nested OptionalFlag equality when flags differ."""
@@ -265,12 +265,12 @@ class TestNestedOptionalFlagEquality:
         assert effects_with_bold != effects_without_bold
 
         # Verify font bold flag states
-        assert effects_with_bold.font.bold.found == True
-        assert effects_without_bold.font.bold.found == False
+        assert effects_with_bold.font.bold.is_present() == True
+        assert effects_without_bold.font.bold.is_present() == False
 
         # Both should have same italic flag state (not found)
-        assert effects_with_bold.font.italic.found == False
-        assert effects_without_bold.font.italic.found == False
+        assert effects_with_bold.font.italic.is_present() == False
+        assert effects_without_bold.font.italic.is_present() == False
 
     def test_nested_optional_flag_equality_multiple_flags(self):
         """Test nested OptionalFlag equality with multiple flags."""
@@ -292,11 +292,11 @@ class TestNestedOptionalFlagEquality:
         assert effects_both != effects_italic
 
         # Verify flag states
-        assert effects_both.font.bold.found == True
-        assert effects_both.font.italic.found == True
+        assert effects_both.font.bold.is_present() == True
+        assert effects_both.font.italic.is_present() == True
 
-        assert effects_italic.font.bold.found == False
-        assert effects_italic.font.italic.found == True
+        assert effects_italic.font.bold.is_present() == False
+        assert effects_italic.font.italic.is_present() == True
 
     def test_nested_optional_flag_equality_with_hide_flag(self):
         """Test nested OptionalFlag equality including Effects hide flag."""
@@ -318,12 +318,12 @@ class TestNestedOptionalFlagEquality:
         assert effects_with_hide != effects_without_hide
 
         # Verify hide flag states
-        assert effects_with_hide.hide.found == True
-        assert effects_without_hide.hide.found == False
+        assert effects_with_hide.hide.is_present() == True
+        assert effects_without_hide.hide.is_present() == False
 
         # Both should have same font bold flag state (found)
-        assert effects_with_hide.font.bold.found == True
-        assert effects_without_hide.font.bold.found == True
+        assert effects_with_hide.font.bold.is_present() == True
+        assert effects_without_hide.font.bold.is_present() == True
 
 
 if __name__ == "__main__":

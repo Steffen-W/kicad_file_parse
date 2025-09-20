@@ -24,7 +24,7 @@ def test_parser_gap_detection_demo():
     # Test 1: Original S-expression should parse without issues
     print("\n1. Parsing original S-expression with COMPLETE mode:")
     try:
-        at_obj = At._parse_sexpr(original_sexpr, ParseStrictness.COMPLETE)
+        at_obj = At.from_sexpr(original_sexpr, ParseStrictness.COMPLETE)
         print(
             f"   ✓ SUCCESS: Parsed At object: x={at_obj.x}, y={at_obj.y}, angle={at_obj.angle}"
         )
@@ -34,7 +34,7 @@ def test_parser_gap_detection_demo():
     # Test 2: Extended S-expression reveals parser gaps
     print("\n2. Parsing extended S-expression with COMPLETE mode:")
     try:
-        at_obj = At._parse_sexpr(extended_sexpr, ParseStrictness.COMPLETE)
+        at_obj = At.from_sexpr(extended_sexpr, ParseStrictness.COMPLETE)
         print(f"   ✗ UNEXPECTED SUCCESS: This should have failed!")
     except ValueError as e:
         print(f"   ✓ EXPECTED FAILURE: {e}")
@@ -45,7 +45,7 @@ def test_parser_gap_detection_demo():
     # Test 3: Other strictness modes don't reveal the gap
     print("\n3. Parsing extended S-expression with LENIENT mode:")
     try:
-        at_obj = At._parse_sexpr(extended_sexpr, ParseStrictness.LENIENT)
+        at_obj = At.from_sexpr(extended_sexpr, ParseStrictness.LENIENT)
         print(
             f"   ✓ SUCCESS: Parsed At object: x={at_obj.x}, y={at_obj.y}, angle={at_obj.angle}"
         )
@@ -89,7 +89,7 @@ def test_detect_missing_parser_features():
 
         try:
             # This should fail in COMPLETE mode
-            obj = test_case["class"]._parse_sexpr(
+            obj = test_case["class"].from_sexpr(
                 test_case["sexpr"], ParseStrictness.COMPLETE
             )
             print(f"   ✗ UNEXPECTED: Parsing succeeded when it should have failed")
@@ -120,7 +120,7 @@ def test_parser_completeness_validation():
     for sexpr, obj_class, description in good_test_cases:
         print(f"\nTesting: {description}")
         try:
-            obj = obj_class._parse_sexpr(sexpr, ParseStrictness.COMPLETE)
+            obj = obj_class.from_sexpr(sexpr, ParseStrictness.COMPLETE)
             print(f"   ✓ COMPLETE: All parameters consumed successfully")
         except ValueError as e:
             print(f"   ✗ INCOMPLETE: {e}")
@@ -160,7 +160,7 @@ def test_real_world_gap_scenario():
             continue
 
         try:
-            obj = obj_class._parse_sexpr(expr, ParseStrictness.COMPLETE)
+            obj = obj_class.from_sexpr(expr, ParseStrictness.COMPLETE)
             print(f"   ✓ COMPLETE: Parser handles all parameters")
         except ValueError as e:
             gaps_found += 1

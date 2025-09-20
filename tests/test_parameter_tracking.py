@@ -84,7 +84,7 @@ def test_complete_strictness_mode_with_fully_used_parameters():
     sexpr_data = ["at", 10.0, 20.0, 90.0]
 
     # Should parse successfully in COMPLETE mode when all parameters are used
-    at_obj = At._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+    at_obj = At.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
     assert at_obj.x == 10.0
     assert at_obj.y == 20.0
@@ -98,7 +98,7 @@ def test_complete_strictness_mode_with_unused_parameters():
 
     # Should raise ValueError for unused parameters in COMPLETE mode
     with pytest.raises(ValueError, match="Unused parameters in At"):
-        At._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+        At.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
 
 def test_complete_strictness_mode_with_complex_object():
@@ -107,7 +107,7 @@ def test_complete_strictness_mode_with_complex_object():
     sexpr_data = ["size", 1.0, 2.0]
 
     # Should parse successfully when all parameters are used
-    size_obj = Size._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+    size_obj = Size.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
     assert size_obj.width == 1.0
     assert size_obj.height == 2.0
@@ -120,7 +120,7 @@ def test_complete_strictness_mode_with_complex_unused_parameters():
 
     # Should raise ValueError for unused parameters
     with pytest.raises(ValueError, match="Unused parameters in Size"):
-        Size._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+        Size.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
 
 def test_other_strictness_modes_ignore_unused_parameters():
@@ -134,7 +134,7 @@ def test_other_strictness_modes_ignore_unused_parameters():
         ParseStrictness.LENIENT,
         ParseStrictness.PERMISSIVE,
     ]:
-        at_obj = At._parse_sexpr(sexpr_data, strictness)
+        at_obj = At.from_sexpr(sexpr_data, strictness)
         assert at_obj.x == 10.0
         assert at_obj.y == 20.0
         assert at_obj.angle == 90.0
@@ -148,7 +148,7 @@ def test_complete_strictness_with_nested_objects():
 
     # Should parse successfully when all parameters are used
     try:
-        pad_obj = Pad._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+        pad_obj = Pad.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
         # Basic validation
         assert pad_obj.number == "1"
         assert pad_obj.type.value == "smd"
@@ -167,7 +167,7 @@ def test_complete_strictness_with_optional_elements():
     sexpr_data = ["layer", "F.Cu"]
 
     # Should work with COMPLETE mode
-    layer_obj = Layer._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+    layer_obj = Layer.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
     assert layer_obj.name == "F.Cu"
 
 
@@ -182,8 +182,8 @@ def test_tracking_preserves_parsing_correctness():
 
     for sexpr_data, obj_class in test_cases:
         # Parse with and without COMPLETE mode
-        obj_normal = obj_class._parse_sexpr(sexpr_data, ParseStrictness.STRICT)
-        obj_tracked = obj_class._parse_sexpr(sexpr_data, ParseStrictness.COMPLETE)
+        obj_normal = obj_class.from_sexpr(sexpr_data, ParseStrictness.STRICT)
+        obj_tracked = obj_class.from_sexpr(sexpr_data, ParseStrictness.COMPLETE)
 
         # Objects should be equivalent
         assert obj_normal == obj_tracked

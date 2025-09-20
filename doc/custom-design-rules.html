@@ -1,0 +1,1924 @@
+
+<h3 id="custom-design-rules"><a id="custom_design_rules"></a>Custom design rules</h3>
+<div class="paragraph">
+<p>KiCad&#8217;s custom design rule system allows creating design rules that are more specific than the
+generic rules available in the Constraints page of the Board Setup dialog.  Custom design rules have
+many applications, but in general they are used to apply certain rules to a portion of the board,
+such as a specific net or net class, a specific area, or a specific footprint.</p>
+</div>
+<div class="paragraph">
+<p>Custom design rules are stored in a separate file with the extension <code>kicad_dru</code>.  This file is
+created automatically when you start adding custom rules to a project.  If you are using custom
+rules in your project, make sure to save the <code>kicad_dru</code> file along with the <code>kicad_pcb</code> and
+<code>kicad_pro</code> files when making backups or committing to a version control system.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The <code>kicad_dru</code> file is managed automatically by KiCad and should not be edited with an
+      external text editor.  Always use the Custom Rules page of the Board Setup dialog to edit
+      custom design rules.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="the_custom_rules_editor">The Custom Rules editor</h4>
+<div class="paragraph">
+<p>The custom rules editor is located in the Board Setup dialog and provides a text editor for
+entering custom rules, a syntax checker that will test your custom rules and note any errors, and
+a syntax help dialog that contains a quick reference to the custom rules language and some
+example rules.</p>
+</div>
+<div class="paragraph">
+<p>The custom rules editor also provides context-sensitive autocomplete to suggest valid keywords and
+properties. The autocomplete suggestion menu appears automatically, but it can also be opened
+manually by pressing <span class="keyseq"><kbd>Ctrl</kbd>+<kbd>Space</kbd></span>.</p>
+</div>
+<div class="paragraph">
+<p>It is a good idea to use the <strong>Check rule syntax</strong> button after editing custom rules to make sure
+there are no syntax errors.  Any errors in the custom rules will prevent the design rule checker
+from running.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="custom_rule_syntax">Custom rule syntax</h4>
+<div class="paragraph">
+<p>The custom design rule language is based on s-expressions and allows you to create design
+constraints that are not possible with the built-in constraints.  Each design rule generally
+contains a <strong>condition</strong> defining what objects to match and a <strong>constraint</strong> defining the rule to
+be applied to the matched objects.</p>
+</div>
+<div class="paragraph">
+<p>The language uses parentheses (<code>(</code> and <code>)</code>) to define clauses of related keywords and values.
+Parentheses must always be matched: for every <code>(</code> there must be a matching <code>)</code>.  Inside a clause,
+keywords and values are separated by whitespace (spaces, tabs, and newlines).  By convention, a single space is used, but any
+number of whitespace characters between keywords and values is acceptable.  In places where text strings are
+valid, strings without any whitespace may be quoted with <code>"</code> or <code>'</code>, or unquoted.  Strings that
+contain whitespace must always be quoted.  Newlines cannot be used within a quoted string.  Where nested quotes are required, a single level of
+nesting is possible by using <code>"</code> for the outer quote character and <code>'</code> for the inner (or vice
+versa).  Newlines between clauses are not required, but are typically used in examples for clarity.</p>
+</div>
+<div class="paragraph">
+<p>In the syntax descriptions below, items in <code>&lt;angle brackets&gt;</code> represent keywords or values that must be present
+and items in <code>[square brackets]</code> represent keywords or values that are optional or only sometimes required.</p>
+</div>
+<div class="paragraph">
+<p>The Custom Rules file must start with a version header defining the version of the rules language.
+As of KiCad 9.0, the version is <code>1</code>.  The syntax of the version header is <code>(version &lt;number&gt;)</code>. So
+in KiCad 9.0 the header should read:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>(version 1)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>After the version header, you can enter any number of rules.  Rules are evaluated in reverse order,
+meaning the last rule in the file is checked first.  Once a matching rule is found for a given set
+objects being tested, no further rules will be checked. In practice, this means that more specific
+rules should be later in the file, so that they are evaluated before more general rules.</p>
+</div>
+<div class="paragraph">
+<p>For example, if you create one rule that limits the minimum clearance between tracks in the net
+<code>HV</code> and tracks in any other net and a second rule that limits the minimum clearance for all
+objects inside a certain rule area, make sure the first rule appears later in the custom rules file
+than the second rule.  Otherwise tracks in the <code>HV</code> net could have the wrong clearance if they fall
+inside the rule area.</p>
+</div>
+<div class="paragraph">
+<p>Each rule must have a name and one or more <code>constraint</code> clauses.  The name can be any string and is
+used to refer to the rule in DRC reports.  The <code>constraint</code> defines the behavior of the rule.
+Rules may also have a <code>condition</code> clause that determines which objects should have the
+rule applied, an optional <code>layer</code> clause which specifies which board layers the rule applies to,
+and an optional <code>severity</code> clause which specifies the severity of the resulting DRC violation.</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>(rule &lt;name&gt;
+    [(severity &lt;severity&gt;)]
+    [(layer &lt;layer_name&gt;)]
+    [(condition &lt;expression&gt;)]
+    (constraint &lt;constraint_type&gt; [constraint_arguments]))</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The custom rules file may also include comments to describe rules.  Comments are denoted by any
+line that begins with the <code>#</code> character (not including whitespace). You can press <span class="keyseq"><kbd>Ctrl</kbd>+<kbd>/</kbd></span>
+to comment or uncomment lines automatically.</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre># Clearance for 400V nets to anything else
+(rule HV
+    (condition "A.hasNetclass('HV')")
+    (constraint clearance (min 1.5mm)))</pre>
+</div>
+</div>
+<div class="sect4">
+<h5 id="layer_clause">Layer Clause</h5>
+<div class="paragraph">
+<p>The <code>layer</code> clause determines which layers the rule will work on.  While the layer of objects can
+be tested in the <code>condition</code> clause as described below, using the <code>layer</code> clause is more efficient.</p>
+</div>
+<div class="paragraph">
+<p>The value in the <code>layer</code> clause can be any board layer name, or the shortcut keywords <code>outer</code> to match the
+front and back copper layers (<code>F.Cu</code> and <code>B.Cu</code>) and <code>inner</code> to match any internal copper layers.</p>
+</div>
+<div class="paragraph">
+<p>If the <code>layer</code> clause is omitted, the rule will apply to all layers.</p>
+</div>
+<div class="paragraph">
+<p>Some examples:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre># Do not allow footprints on back layer (no condition clause means this rule always applies)
+(rule "Top side footprints only"
+    (layer B.Cu)
+    (constraint disallow footprint))
+
+# This rule does the same thing, but is less efficient
+(rule "Top side footprints only"
+    (condition "A.Layer == 'B.Cu'")
+    (constraint disallow footprint))
+
+# Larger clearance on outer layers (inner layer clearance set by board minimum clearance)
+(rule "clearance_outer"
+    (layer outer)
+    (constraint clearance (min 0.25mm)))</pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="severity_clause">Severity Clause</h5>
+<div class="paragraph">
+<p>The <code>severity</code> clause sets the DRC violation severity whenever the rule is violated.</p>
+</div>
+<div class="paragraph">
+<p>Possible values are <code>error</code>, <code>warning</code>, <code>ignore</code>, and <code>exclusion</code>. Ignored rules are not observed by
+the interactive router and violations are not shown in the DRC dialog. However, ignored rules are
+evaluated for matching and therefore can still override earlier rules. Errors, warnings, and excluded
+rules are all observed by the interactive router, and violations are displayed in the DRC dialog when
+the appropriate filters are selected.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Setting a rule&#8217;s severity to <code>ignore</code> does not disable the rule; only the effects of the rule
+are disabled. The rule is still evaluated and can still override previous rules.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="condition_clauses">Condition Clauses</h5>
+<div class="paragraph">
+<p>The <code>condition</code> clause determines which objects which objects the rule applies to. If a rule has a
+condition clause, the rule will apply to any objects that match the condition. If a rule
+does not have any condition clauses, it will apply unconditionally.</p>
+</div>
+<div class="paragraph">
+<p>The rule <strong>condition</strong> is an expression contained inside a text string (and therefore usually
+surrounded by quotes in order to allow whitespace for clarity).  The expression is evaluated
+against each pair of objects that is being tested by the design rule checker.  For example,
+when checking for clearance between copper objects, each copper object (track segment, pad, via,
+etc.) on each net is checked against other copper objects on other nets.  If a custom rule exists
+where the expression matches the two given copper objects and the constraint defines a copper
+clearance, this custom rule could be used to determine the required clearance between the two
+objects.</p>
+</div>
+<div class="paragraph">
+<p>The objects being tested are referred to as <code>A</code> and <code>B</code> in the expression language.  The order of
+the two objects is not important because the design rule checker will test both possible orderings.
+For example, you can write a rule that assumes that <code>A</code> is a track and <code>B</code> is a via.  There are
+some expression functions that test both objects together; these use <code>AB</code> as the object name.</p>
+</div>
+<div class="paragraph">
+<p>The expression in a condition must resolve to a boolean value (true or false).  If the
+expression resolves to true, the rule is applied to the given objects.</p>
+</div>
+<div class="paragraph">
+<p>Each object being tested has <strong>properties</strong> that can be compared, as well as <strong>functions</strong> that
+can be used to perform certain tests.  The syntax for using properties and functions is
+<code>&lt;object&gt;.&lt;property&gt;</code> and <code>&lt;object&gt;.&lt;function&gt;([arguments])</code> respectively.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+When you type <code>&lt;object&gt;.</code> in the text editor (<code>A.</code>, <code>B.</code>, or <code>AB.</code>), an autocomplete list
+      will open that contains all the object properties that can be used.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The object properties and functions are compared using <strong>boolean</strong> and <strong>relational operators</strong>
+to result in a boolean expression.  The following operators are supported:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<tbody>
+<tr>
+<td><p><code>==</code></p></td>
+<td><p>Equal to</p></td>
+</tr>
+<tr>
+<td><p><code>!=</code></p></td>
+<td><p>Not equal to</p></td>
+</tr>
+<tr>
+<td><p><code>&gt;</code>, <code>&gt;=</code></p></td>
+<td><p>Greater than, greater than or equal to</p></td>
+</tr>
+<tr>
+<td><p><code>&lt;</code>, <code>&lt;=</code></p></td>
+<td><p>Less than, less than or equal to</p></td>
+</tr>
+<tr>
+<td><p><code>&amp;&amp;</code></p></td>
+<td><p>And</p></td>
+</tr>
+<tr>
+<td><p><code>||</code></p></td>
+<td><p>Or</p></td>
+</tr>
+<tr>
+<td><p><code>!</code></p></td>
+<td><p>Not (unary)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>For example, <code>A.NetName == 'VDD'</code> will apply to any objects that are part of the "VDD" net and
+<code>A.NetName != B.NetName</code> will apply to any objects that have different net names. Parentheses
+can be used to clarify the order of operations in complex expressions but they are not required.
+All the boolean operators have the same precedence and are evaluated in order from left to right.</p>
+</div>
+<div class="paragraph">
+<p>To test a boolean property, evaluate the property itself, without comparing it to a boolean
+literal like <code>true</code> or <code>false</code> (which don&#8217;t exist in the DRC rules language). For example, to test
+if a footprint&#8217;s boolean <code>Do_not_populate</code> property is set, the boolean expression <code>A.Do_not_populate</code>
+by itself is sufficient. It will resolve to a true value if the footprint&#8217;s DNP attribute is set, and
+a false value otherwise. To check if a boolean is false, use the <code>!</code> operator (unary not):
+<code>!A.Do_not_populate</code> will resolve to a true value if the DNP attribute is unset, and a false value
+otherwise.</p>
+</div>
+<div class="paragraph">
+<p>Some properties represent a physical measurement, such as a size, angle, length, position, etc.
+On these properties, <strong>unit suffixes</strong> can be used in the custom rules language to specify what
+units are being used.  If no unit suffix is used, the internal representation of the property will
+be used instead (nanometers for distances and degrees for most angles).  The following suffixes
+are supported:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<tbody>
+<tr>
+<td><p><code>mm</code></p></td>
+<td><p>Millimeters</p></td>
+</tr>
+<tr>
+<td><p><code>mil</code>, <code>th</code></p></td>
+<td><p>Thousandths of an inch (mils)</p></td>
+</tr>
+<tr>
+<td><p><code>in</code>, <code>"</code></p></td>
+<td><p>Inches</p></td>
+</tr>
+<tr>
+<td><p><code>deg</code></p></td>
+<td><p>Degrees</p></td>
+</tr>
+<tr>
+<td><p><code>rad</code></p></td>
+<td><p>Radians</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The units used in custom design rules are independent of the display units in the PCB editor.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Numeric conditions can use simple math expressions, for example
+<code>(condition "A.Hole_Size_X == 1.0mm + 0.1mm")</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="constraint_clauses">Constraint Clauses</h5>
+<div class="paragraph">
+<p>The <code>constraint</code> clause of the rule defines the behavior of the rule on the objects that are
+matched by the condition.  Each constraint clause has a <strong>constraint type</strong> and one or more
+arguments that set the behavior of the constraint.  A single rule may have multiple constraint
+clauses, in order to set multiple constraints (for example, <code>clearance</code> and <code>track_width</code>) for
+objects that match the same rule conditions.</p>
+</div>
+<div class="paragraph">
+<p>Many constraints take arguments that specify a physical measurement or quantity.  These constraints
+support minimum, optimal, and maximum value specification (abbreviated "min/opt/max").  The
+<strong>minimum</strong> and <strong>maximum</strong> values are used for design rule checking: if the actual value is less
+than the minimum or is greater than the maximum value in the constraint, a DRC error is created.
+The <strong>optimal</strong> value is only used for some constraints, and informs KiCad of a "best" value to use
+by default.  For example, the optimal <code>diff_pair_gap</code> is used by the router when placing new
+differential pairs.  No errors will be created if the differential pair is later modified such that
+the gap between the pair is different from the optimal value, as long as the gap is between the
+minimum and maximum values (if these are specified).  In all cases where a min/opt/max value is
+accepted, any or all of the minimum, optimal, and maximum value can be specified.</p>
+</div>
+<div class="paragraph">
+<p>Min/opt/max values are specified as <code>(min &lt;value&gt;)</code>, <code>(opt &lt;value&gt;)</code>, and <code>(max &lt;value&gt;)</code>. For
+example, a track width constraint may be written as
+<code>(constraint track_width (min 0.5mm) (opt 0.5mm) (max 1.0mm))</code> or simply
+<code>(constraint track_width (min 0.5mm))</code> if only the minimum width is to be constrained.</p>
+</div>
+<div class="paragraph">
+<p>Numeric constraint values can use simple math expressions, for example
+<code>(constraint clearance (min 0.5mm + 0.1mm))</code>.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Constraint type</th>
+<th class="tableblock halign-left valign-top">Argument type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>annular_width</code></p></td>
+<td><p>min/opt/max</p></td>
+<td><p>Checks the width of annular rings on vias and pads.</p></td>
+</tr>
+<tr>
+<td><p><code>assertion</code></p></td>
+<td><p>boolean expression</p></td>
+<td><p>Checks that the boolean expression is true. If the expression is false, a DRC error will be
+    created. The expression can use any of the properties listed in the Object Properties section.</p></td>
+</tr>
+<tr>
+<td><p><code>clearance</code></p></td>
+<td><p>min</p></td>
+<td><p>Specifies the <strong>electrical</strong> clearance between copper objects of different nets.  (See
+    <code>physical_clearance</code> if you wish to specify clearance between objects regardless of net.)</p>
+<p class="tableblock">    To allow copper objects to overlap (collide), create a <code>clearance</code> constraint with the <code>min</code>
+    value less than zero (for example, <code>-1</code>).</p></td>
+</tr>
+<tr>
+<td><p><code>creepage</code></p></td>
+<td><p>min</p></td>
+<td><p>Specifies the creepage between copper objects of different nets.</p></td>
+</tr>
+<tr>
+<td><p><code>connection_width</code></p></td>
+<td><p>min</p></td>
+<td><p>Checks the width of connections between pads and zones. An error will be generated for each pad
+    connection that is narrower than the <code>min</code> value.</p></td>
+</tr>
+<tr>
+<td><p><code>courtyard_clearance</code></p></td>
+<td><p>min</p></td>
+<td><p>Checks the clearance between footprint courtyards and generates an error if any two courtyards
+    are closer than the <code>min</code> distance.  If a footprint does not have a courtyard shape, no errors
+    will be generated from this constraint.</p>
+<p class="tableblock">    To allow courtyard objects to overlap (collide), create a <code>courtyard_clearance</code> constraint with
+    the <code>min</code> value less than zero (for example, <code>-1</code>).</p></td>
+</tr>
+<tr>
+<td><p><code>diff_pair_gap</code></p></td>
+<td><p>min/opt/max</p></td>
+<td><p>Sets the gap between parallel tracks in a differential pair.  The <code>opt</code> setting is used by the
+    interactive router for placing new differential pairs. An error will be generated if the
+    spacing between tracks in a differential pair is outside of the <code>min</code> and <code>max</code> settings.
+    Differential pair gap is not tested on non-parallel portions of a differential pair (for example,
+    the fanout from a component).</p></td>
+</tr>
+<tr>
+<td><p><code>diff_pair_uncoupled</code></p></td>
+<td><p>max</p></td>
+<td><p>Checks the distance that a differential pair track is routed uncoupled from the other polarity
+    track in the pair (for example, where the pair fans out from a component, or becomes uncoupled
+    to pass around another object such as a via). An error will be generated for each differential
+    pair with an uncoupled distance that is greater than the <code>max</code> value. Differential pair tracks
+    are considered uncoupled if they are not parallel or if they are outside the range set by a
+    <code>diff_pair_gap</code> constraint.</p></td>
+</tr>
+<tr>
+<td><p><code>disallow</code></p></td>
+<td><p><code>track<br>
+     via<br>
+     micro_via<br>
+     buried_via<br>
+     pad<br>
+     zone<br>
+     text<br>
+     graphic<br>
+     hole<br>
+     footprint</code></p></td>
+<td><p>Specify one or more object types to disallow, separated by spaces.  For example,
+    <code>(constraint disallow track)</code> or <code>(constraint disallow track via pad)</code>.  If an object of this
+    type matches the rule condition, a DRC error will be created.  This constraint is essentially
+    the same as a keepout rule area, but can be used to create more specific keepout restrictions.</p></td>
+</tr>
+<tr>
+<td><p><code>edge_clearance</code></p></td>
+<td><p>min/opt/max</p></td>
+<td><p>Checks the clearance between objects and the board edge.</p>
+<p class="tableblock">    This can also be thought of as the "milling tolerance" as the board edge will include all
+    graphical items on the <code>Edge.Cuts</code> layer as well as any <strong>oval</strong> pad holes.  (See
+    <code>physical_hole_clearance</code> for the drilling tolerance.)</p>
+<p class="tableblock">    To allow objects to overlap (collide) with the board edge, create an <code>edge_clearance</code>
+    constraint with the <code>min</code> value less than zero (for example, <code>-1</code>).</p></td>
+</tr>
+<tr>
+<td><p><code>hole_clearance</code></p></td>
+<td><p>min</p></td>
+<td><p>Checks the clearance between a drilled hole in a pad or via and copper objects on a different
+    net.  The clearance is measured from the diameter of the hole, not its center.</p></td>
+</tr>
+<tr>
+<td><p><code>hole_size</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the size (diameter) of a drilled hole in a pad or via.  For oval holes, the smaller
+    (minor) diameter will be tested against the <code>min</code> value (if specified) and the larger (major)
+    diameter will be tested against the <code>max</code> value (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>hole_to_hole</code></p></td>
+<td><p>min</p></td>
+<td><p>Checks the clearance between mechanically-drilled holes in pads and vias.  The clearance is
+    measured between the diameters of the holes, not between their centers.</p>
+<p class="tableblock">    This constraint is solely for the protection of drill bits.  The clearance between
+    <strong>laser-drilled</strong> (microvias) and other non-mechanically-drilled holes is not checked, nor is
+    the clearance between <strong>milled</strong> (oval-shaped) and other non-mechanically-drilled holes.</p></td>
+</tr>
+<tr>
+<td><p><code>length</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the total routed length for the nets that match the rule condition and generates an
+    error for each net that is below the <code>min</code> value (if specified) or above the <code>max</code> value (if
+    specified) of the constraint.
+    This constraint also sets a target length that is used by the
+    <a href="#length-tuning">length tuning tool</a> for any nets that match the rule condition.</p></td>
+</tr>
+<tr>
+<td><p><code>min_resolved_spokes</code></p></td>
+<td><p><code>0<br>
+     1<br>
+     2<br>
+     3<br>
+     4</code></p></td>
+<td><p>Checks the total number of connections (spokes) to a pad. An error will be raised for each
+    pad that has fewer than the specified number of spokes.</p></td>
+</tr>
+<tr>
+<td><p><code>physical_clearance</code></p></td>
+<td><p>min</p></td>
+<td><p>Checks the clearance between two objects, regardless of their nets. This includes objects
+    with the same net and objects on non-copper layers. Only objects on physical layers and
+    courtyard layers are checked: this means copper, adhesive, paste, silkscreen, mask,
+    courtyard, and edge cut layers. Physical clearance is only checked between objects on the
+    same layer, except for objects on <code>Edge.Cuts</code>, which are treated as if they are on all layers.
+    In other words, physical clearance can be checked between objects on <code>Edge.Cuts</code> and objects
+    on any of the other physical layers.</p>
+<p class="tableblock">    While this can perform more general-purpose checks than <code>clearance</code>, it is much slower.  Use
+    <code>clearance</code> where possible.</p></td>
+</tr>
+<tr>
+<td><p><code>physical_hole_clearance</code></p></td>
+<td><p>min</p></td>
+<td><p>Checks the clearance between a drilled hole in a pad or via and another object, regardless of
+    net. The clearance is measured from the diameter of the hole, not its center.</p>
+<p class="tableblock">    This can also be thought of as the "drilling tolerance" as it only includes <strong>round</strong> holes
+    (see <code>edge_clearance</code> for the milling tolerance).</p></td>
+</tr>
+<tr>
+<td><p><code>silk_clearance</code></p></td>
+<td><p>min/opt/max</p></td>
+<td><p>Checks the clearance between objects on silkscreen layers and other objects.</p>
+<p class="tableblock">    To allow silkscreen objects to overlap (collide) with other objects, create a <code>silk_clearance</code>
+    constraint with the <code>min</code> value less than zero (for example, <code>-1</code>).</p></td>
+</tr>
+<tr>
+<td><p><code>skew</code></p></td>
+<td><p>min/opt/max/within_diff_pairs</p></td>
+<td><p>Checks the total skew for the nets that match the rule condition, that is, the difference
+    between the length of each net and the longest net that is matched
+    by the rule.  If the difference between the longest net and the length of any one net is above
+    the constraint <code>max</code> value, an error will be generated.
+    This constraint also sets a target skew that is used by the <a href="#length-tuning">skew tuning tool</a>
+    for any nets that match the rule condition. The target skew is the <code>opt</code> value, if specified,
+    or the <code>min</code> value if not. If neither <code>min</code> nor <code>opt</code> is specified, the target skew is <code>0</code>.
+    If the option <code>within_diff_pairs</code> is specified, the skew will be tested separately for every
+    valid differential pair in the nets matching the rule. If <code>within_diff_pairs</code> is not specified,
+    the skew will  be tested across all matching nets (e.g. for skew tuning a bus).</p></td>
+</tr>
+<tr>
+<td><p><code>text_height</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the height of text, including text boxes. An error will be generated for each text item
+    that has a height below the <code>min</code> value (if specified) or above the <code>max</code> value (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>text_thickness</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the thickness of text, including text boxes. An error will be generated for each text
+    item that has a thickness below the <code>min</code> value (if specified) or above the <code>max</code> value (if
+    specified).</p></td>
+</tr>
+<tr>
+<td><p><code>thermal_relief_gap</code></p></td>
+<td><p>min</p></td>
+<td><p>Specifies the width of the gap between a pad and a zone with a thermal-relief connection.</p></td>
+</tr>
+<tr>
+<td><p><code>thermal_spoke_width</code></p></td>
+<td><p>opt</p></td>
+<td><p>Specifies the width of the spokes connecting a pad to a zone with a thermal-relief connection.</p></td>
+</tr>
+<tr>
+<td><p><code>track_angle</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the angle between two connected track segments. An error will be generated for each
+    connected pair with an angle below the min value (if specified) or above the max value
+    (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>track_segment_length</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the length of track and arc segments. An error will be generated for each segment that
+    has a width below the min value (if specified) or above the max value (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>track_width</code></p></td>
+<td><p>min/opt/max</p></td>
+<td><p>Checks the width of track and arc segments.  An error will be generated for each segment that
+    has a width below the <code>min</code> value (if specified) or above the <code>max</code> value (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>via_count</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Counts the number of vias on every net matched by the rule condition.  An error will be generated
+    for each net that has fewer vias than the <code>min</code> value (if specified) or more than the <code>max</code> value
+    (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>via_diameter</code></p></td>
+<td><p>min/max</p></td>
+<td><p>Checks the diameter of vias. An error will be generated for each via that has a diameter below
+    the <code>min</code> value (if specified) or above the <code>max</code> value (if specified).</p></td>
+</tr>
+<tr>
+<td><p><code>zone_connection</code></p></td>
+<td><p><code>solid<br>
+    thermal_reliefs<br>
+    none</code></p></td>
+<td><p>Specifies the connection to be made between a zone and a pad.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="object_property_and_function_reference">Object property and function reference</h4>
+<div class="paragraph">
+<p>The following properties can be tested in custom rule expressions:</p>
+</div>
+<div class="sect4">
+<h5 id="common_properties">Common Properties</h5>
+<div class="paragraph">
+<p>These properties apply to all PCB objects.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Layer</code></p></td>
+<td><p>string</p></td>
+<td><p>The board layer on which the object exists.  For objects that exist on more than one layer,
+    this property will return the first layer (for example, <code>F.Cu</code> for most through-hole
+    pads/vias).</p></td>
+</tr>
+<tr>
+<td><p><code>Locked</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the object is locked.</p></td>
+</tr>
+<tr>
+<td><p><code>Parent</code></p></td>
+<td><p>string</p></td>
+<td><p>Returns the unique identifier of the parent object of this object.</p></td>
+</tr>
+<tr>
+<td><p><code>Position_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The position of the object&#8217;s origin in the X-axis. Note that the origin of an object is not
+    always the same as the center of the object&#8217;s bounding box.  For example, the origin of a
+    footprint is the location of the (0, 0) coordinate of that footprint in the footprint editor,
+    but the footprint may have been designed such that this location is not in the center of the
+    courtyard shape.</p></td>
+</tr>
+<tr>
+<td><p><code>Position_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The position of the object&#8217;s origin in the Y-axis.  Note that KiCad always uses Y-coordinates
+    that increase from the top to bottom of the screen internally, even if you have configured your
+    settings to show the Y-coordinates increasing from bottom to top.</p></td>
+</tr>
+<tr>
+<td><p><code>Type</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Bitmap", "Dimension", "Footprint", "Graphic", "Group", "Leader", "Pad",
+    "Target", "Text", "Text Box", "Track", "Via", or "Zone".</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="connected_object_properties">Connected Object Properties</h5>
+<div class="paragraph">
+<p>These properties apply to copper objects that can have a net assigned (pads, vias, zones, tracks).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Net</code></p></td>
+<td><p>integer</p></td>
+<td><p>The net code of the copper object.</p>
+<p class="tableblock">    Note that net codes should not be relied upon to remain
+    constant: if you need to refer to a specific net in a rule, use <code>NetName</code> instead.  <code>Net</code> can
+    be used to compare the nets of two objects with better performance, for example
+    <code>A.Net == B.Net</code> is faster than <code>A.NetName == B.NetName</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>NetClass</code></p></td>
+<td><p>string</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>The list of all net classes for the copper object. This is a priority
+ordered, comma delimited list where a net has multiple net classes assigned.</p>
+</div>
+<div class="paragraph">
+<p>Note that this list may include the <code>Default</code> net class, even if other net
+classes have been explicitly assigned to the net, because the <code>Default</code> net
+class provides fallback properties and design rules for any properties not
+defined by explicit net classes. See the
+<a href="#board-setup-net-classes">net class documentation</a> for more details.</p>
+</div>
+<div class="paragraph">
+<p>In an expression, an object&#8217;s <code>NetClass</code> property and a net class string are
+equal to each other if the string matches any of the net classes in the list, or
+if the string matches the full ordered list. For example, if an object belongs
+to the <code>HV</code> and <code>Default</code> net classes, all of the following expressions are
+true:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>A.NetClass == 'HV'</code></p>
+</li>
+<li>
+<p><code>A.NetClass == 'Default'</code></p>
+</li>
+<li>
+<p><code>A.NetClass == 'HV,Default'</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The following expressions are false, however:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>A.NetClass == 'LV'</code></p>
+</li>
+<li>
+<p><code>A.NetClass == 'LV,Default'</code></p>
+</li>
+<li>
+<p><code>A.NetClass == 'Default,HV'</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>You can also check if a copper object is a member of a particular net class,
+regardless of any other net classes it may be a part of, using
+<code>hasNetclass(&lt;netclass&gt;)</code>. You can check if a copper object&#8217;s net classes exactly
+match a given list of net classes using <code>hasExactNetclass(&lt;netclass list&gt;)</code>.</p>
+</div></div></td>
+</tr>
+<tr>
+<td><p><code>NetName</code></p></td>
+<td><p>string</p></td>
+<td><p>The name of the net for the copper object.</p>
+<p class="tableblock">    Note that <code>Net</code> can be used instead in some situations for better
+    performance; see the notes under <code>Net</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>Curved_Edges</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if curved edges are enabled for teardrops connected to the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Enable_Teardrops</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if teardrops are enabled for the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Prefer_Zone_Connections</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the "Prefer zone connections" property is set for the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Allow_Teardrops_To_Span_Two_Tracks</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the "Allow teardrops to span two tracks" property is set for the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Best_Length_Ratio</code></p></td>
+<td><p>double</p></td>
+<td><p>Best ratio of teardrop length to object size for teardrops connected to the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Best_Width_Ratio</code></p></td>
+<td><p>double</p></td>
+<td><p>Best ratio of teardrop width to object size for teardrops connected to the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Max_Length</code></p></td>
+<td><p>dimension</p></td>
+<td><p>Maximum length dimension for teardrops connected to the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Max_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>Maximum width dimension for teardrops connected to the object.</p></td>
+</tr>
+<tr>
+<td><p><code>Max_Width_Ratio</code></p></td>
+<td><p>double</p></td>
+<td><p>Maximum allowable ratio of object size to track width for teardrops connected to the object.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="footprint_properties">Footprint Properties</h5>
+<div class="paragraph">
+<p>These properties apply to footprints.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Clearance_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The copper clearance override set for the footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Component_Class</code></p></td>
+<td><p>string</p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>The name of the component class set for the footprint. This is an alphabetically ordered,
+comma delimited list where a footprint has multiple component classes assigned.</p>
+</div>
+<div class="paragraph">
+<p>In an expression, a footprint&#8217;s <code>Component_Class</code> property and a component class string are
+equal to each other if the string matches any of the component classes in the list, or
+if the string matches the full ordered list. For example, if a footprint belongs to the
+<code>Connector</code> and <code>HV</code> component classes in that order, all of the following expressions are true:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>A.Component_Class == 'Connector'</code></p>
+</li>
+<li>
+<p><code>A.Component_Class == 'HV'</code></p>
+</li>
+<li>
+<p><code>A.Component_Class == 'Connector,HV'</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The following expressions are false, however:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>A.Component_Class == 'LV'</code></p>
+</li>
+<li>
+<p><code>A.Component_Class == 'Connector,LV'</code></p>
+</li>
+<li>
+<p><code>A.Component_Class == 'HV,Connector'</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Note that while <code>Component_Class</code> is a footprint property, footprint children, such as pads
+or graphics, are considered to be members of any component class that their parent footprint
+is a member of. For example, if a footprint is has the component class <code>HV</code>, the condition
+<code>A.Component_Class == 'HV'</code> is true both for the footprint as well as for its pads and other
+children.</p>
+</div>
+<div class="paragraph">
+<p>You can also check if an object is part of a footprint with a specific component class using
+the <code>memberOfFootprint('${Class:x}')</code> function.</p>
+</div></div></td>
+</tr>
+<tr>
+<td><p><code>Do_not_Populate</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the footprint&#8217;s "Do not populate" attribute is set.</p></td>
+</tr>
+<tr>
+<td><p><code>Exclude_From_Position_Files</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the footprint&#8217;s "Exclude from position files" attribute is set.</p></td>
+</tr>
+<tr>
+<td><p><code>Exclude_From_Bill_of_Materials</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the footprint&#8217;s "Exclude from bill of materials" attribute is set.</p></td>
+</tr>
+<tr>
+<td><p><code>Exempt_From_Courtyard_Requirement</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the footprint&#8217;s "Exempt from courtyard requirement" attribute is set.</p></td>
+</tr>
+<tr>
+<td><p><code>Keywords</code></p></td>
+<td><p>string</p></td>
+<td><p>The "Keywords" from the library footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Library_Description</code></p></td>
+<td><p>string</p></td>
+<td><p>The footprint&#8217;s description in the footprint library. This is the footprint&#8217;s
+    description property, not the contents of the footprint field named <code>Description</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>Library_Link</code></p></td>
+<td><p>string</p></td>
+<td><p>The link to the library footprint in <code>library_name:footprint_name</code> format.</p></td>
+</tr>
+<tr>
+<td><p><code>Not_in_Schematic</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the footprint&#8217;s "Not in schematic" attribute is set.</p></td>
+</tr>
+<tr>
+<td><p><code>Orientation</code></p></td>
+<td><p>double</p></td>
+<td><p>The orientation (rotation) of the footprint in degrees.</p></td>
+</tr>
+<tr>
+<td><p><code>Reference</code></p></td>
+<td><p>string</p></td>
+<td><p>The reference designator of the footprint.</p>
+<p class="tableblock">    Note that while footprints have a <code>Reference</code> property, footprint child
+    objects (such as pads) do not. To check if an object belongs to a footprint
+    with a specific reference, use the <code>memberOfFootprint('x')</code> function.</p></td>
+</tr>
+<tr>
+<td><p><code>Solderpaste_Margin_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The solder paste margin override set for the footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Solderpaste_Margin_Ratio_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The solder paste margin ratio override set for the footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Gap</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief gap set for the footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief connection width set for the footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Value</code></p></td>
+<td><p>string</p></td>
+<td><p>The contents of the "Value" field of the footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>Zone_Connection_Style</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Inherited", "None", "Thermal reliefs" or "Solid".</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="pad_properties">Pad Properties</h5>
+<div class="paragraph">
+<p>These properties apply to footprint pads.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Clearance_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The copper clearance override set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Fabrication_Property</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "None", "BGA pad", "Fiducial, global to board", "Fiducial, local to footprint",
+    "Test point pad", "Heatsink pad", "Castellated pad".</p></td>
+</tr>
+<tr>
+<td><p><code>Hole_Size_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The size of the pad&#8217;s drilled hole/slot in the X axis.</p></td>
+</tr>
+<tr>
+<td><p><code>Hole_Size_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The size of the pad&#8217;s drilled hole/slot in the Y axis.</p></td>
+</tr>
+<tr>
+<td><p><code>Orientation</code></p></td>
+<td><p>double</p></td>
+<td><p>The orientation (rotation) of the pad in degrees.</p></td>
+</tr>
+<tr>
+<td><p><code>Pad_Number</code></p></td>
+<td><p>string</p></td>
+<td><p>The "number" of a pad, which can be a string (for example "A1" in a BGA).</p></td>
+</tr>
+<tr>
+<td><p><code>Pad_Shape</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Circle", "Rectangle", "Oval", "Trapezoid", "Rounded rectangle", "Chamfered rectangle",
+    or "Custom".</p></td>
+</tr>
+<tr>
+<td><p><code>Pad_To_Die_Length</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The value of the "pad to die length" property of a pad, which is additional length added to
+    the pad&#8217;s net when calculating net length.</p></td>
+</tr>
+<tr>
+<td><p><code>Pad_Type</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Through-hole", "SMD", "Edge connector", or "NPTH, mechanical".</p></td>
+</tr>
+<tr>
+<td><p><code>Pin_Name</code></p></td>
+<td><p>string</p></td>
+<td><p>The name of the pad (usually the name of the corresponding pin in the schematic).</p></td>
+</tr>
+<tr>
+<td><p><code>Pin_Type</code></p></td>
+<td><p>string</p></td>
+<td><p>The electrical type of the pad (usually taken from the corresponding pin in the schematic).
+    One of "Input", "Output", "Bidirectional", "Tri-state", "Passive", "Free", "Unspecified",
+    "Power input", "Power output", "Open collector", "Open emitter", or "Unconnected".</p>
+<p class="tableblock">    Pins with a no-connection flag on them will have a "+no_connect" suffix added to the pin type
+    string. For example, "passive+no_connect" will match a passive pin with a no-connection flag.
+    To match a pin type whether or not the pin has a no-connection flag, use a wildcard: "passive*"
+    will match passive pins with or without a no-connection flag.</p></td>
+</tr>
+<tr>
+<td><p><code>Corner_Radius_Ratio</code></p></td>
+<td><p>double</p></td>
+<td><p>For rounded rectangle pads, the ratio of radius to rectangle size.</p></td>
+</tr>
+<tr>
+<td><p><code>Size_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The size of the pad in the X-axis.</p></td>
+</tr>
+<tr>
+<td><p><code>Size_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The size of the pad in the Y-axis.</p></td>
+</tr>
+<tr>
+<td><p><code>Soldermask_Margin_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The solder mask margin override set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Solderpaste_Margin_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The solder paste margin override set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Solderpaste_Margin_Ratio_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The solder paste margin ratio override set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Gap</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief gap set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Spoke_Angle</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief connection angle set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Spoke_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief connection width set for the pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Zone_Connection_Style</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Inherited", "None", "Thermal reliefs" or "Solid".</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="track_and_arc_properties">Track and Arc Properties</h5>
+<div class="paragraph">
+<p>These properties apply to tracks and arc tracks.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Origin_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The x-coordinate of the start point.</p></td>
+</tr>
+<tr>
+<td><p><code>Origin_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The y-coordinate of the start point.</p></td>
+</tr>
+<tr>
+<td><p><code>End_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The x-coordinate of the end point.</p></td>
+</tr>
+<tr>
+<td><p><code>End_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The y-coordinate of the end point.</p></td>
+</tr>
+<tr>
+<td><p><code>Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The width of the track or arc.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="via_properties">Via Properties</h5>
+<div class="paragraph">
+<p>These properties apply to vias.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Diameter</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The diameter of the via&#8217;s pad.</p></td>
+</tr>
+<tr>
+<td><p><code>Hole</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The diameter of the via&#8217;s finished hole.</p></td>
+</tr>
+<tr>
+<td><p><code>Layer_Bottom</code></p></td>
+<td><p>string</p></td>
+<td><p>The last layer in the via stackup.</p></td>
+</tr>
+<tr>
+<td><p><code>Layer_Top</code></p></td>
+<td><p>string</p></td>
+<td><p>The first layer in the via stackup.</p></td>
+</tr>
+<tr>
+<td><p><code>Via_Type</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Through", "Blind/buried",  or "Micro".</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="tuning_pattern_properties">Tuning Pattern Properties</h5>
+<div class="paragraph">
+<p>These properties apply to tuning patterns.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>End_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The x-coordinate of the end point.</p></td>
+</tr>
+<tr>
+<td><p><code>End_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The y-coordinate of the end point.</p></td>
+</tr>
+<tr>
+<td><p><code>Min_Amplitude</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The minimum amplitude of the tuning pattern.</p></td>
+</tr>
+<tr>
+<td><p><code>Max_Amplitude</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The maximum amplitude of the tuning pattern.</p></td>
+</tr>
+<tr>
+<td><p><code>Tuning_Mode</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Single track", "Differential pair", or "Diff pair skew".</p></td>
+</tr>
+<tr>
+<td><p><code>Initial_Side</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Left", "Right", or "Default".</p></td>
+</tr>
+<tr>
+<td><p><code>Min_Spacing</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The minimum spacing of the tuning pattern..</p></td>
+</tr>
+<tr>
+<td><p><code>Corner_Radius_%</code></p></td>
+<td><p>integer</p></td>
+<td><p>The corner radius percentage of the tuning pattern.</p></td>
+</tr>
+<tr>
+<td><p><code>Target_Length</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The target length for the tuning pattern.</p></td>
+</tr>
+<tr>
+<td><p><code>Target_Skew</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The target skew for the tuning pattern.</p></td>
+</tr>
+<tr>
+<td><p><code>Override_Custom_Rules</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the tuning pattern overrides custom DRC rules.</p></td>
+</tr>
+<tr>
+<td><p><code>Single-sided</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the tuning pattern is single-sided.</p></td>
+</tr>
+<tr>
+<td><p><code>Rounded</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the tuning pattern uses rounded meanders.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="zone_and_rule_area_properties">Zone and Rule Area Properties</h5>
+<div class="paragraph">
+<p>These properties apply to copper and non-copper zones, and rule areas (formerly called keepouts).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Clearance_Override</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The copper clearance override set for the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Hatch_Gap</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The distance between hatched lines in the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Hatch_Minimum_Hole_Ratio</code></p></td>
+<td><p>float</p></td>
+<td><p>The minimum allowed hatching hole size, expressed as a fraction of the
+    nominal hatching hole size.</p></td>
+</tr>
+<tr>
+<td><p><code>Hatch_Orientation</code></p></td>
+<td><p>integer</p></td>
+<td><p>The angle (in degrees) of the hatched lines in the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Hatch_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The width of hatched lines in the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Min_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The minimum allowed width of filled areas in the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Name</code></p></td>
+<td><p>string</p></td>
+<td><p>The user-specified name (blank by default).</p></td>
+</tr>
+<tr>
+<td><p><code>Pad_Connections</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Inherited", "None", "Thermal reliefs", "Solid", or "Thermal Reliefs for PTH".</p></td>
+</tr>
+<tr>
+<td><p><code>Priority</code></p></td>
+<td><p>integer</p></td>
+<td><p>The priority level of the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Gap</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief gap set for the zone.</p></td>
+</tr>
+<tr>
+<td><p><code>Thermal_Relief_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The thermal relief connection width set for the zone.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="graphic_shape_properties">Graphic Shape Properties</h5>
+<div class="paragraph">
+<p>These properties apply to graphic lines, arcs, circles, rectangles, and polygons.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Angle</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The angle of an arc.</p></td>
+</tr>
+<tr>
+<td><p><code>End_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The x-coordinate of the end point.</p></td>
+</tr>
+<tr>
+<td><p><code>End_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The y-coordinate of the end point.</p></td>
+</tr>
+<tr>
+<td><p><code>Filled</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the shape is filled.</p></td>
+</tr>
+<tr>
+<td><p><code>Line_Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>Thickness of the strokes of the shape.</p></td>
+</tr>
+<tr>
+<td><p><code>Line_Style</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Solid", "Dashed", "Dotted", "Dash-Dot", "Dash-Dot-Dot".</p></td>
+</tr>
+<tr>
+<td><p><code>Shape</code></p></td>
+<td><p>string</p></td>
+<td><p>One of "Segment", "Rectangle", "Arc", "Circle", "Polygon", or "Bezier".</p></td>
+</tr>
+<tr>
+<td><p><code>Start_X</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The x-coordinate of the start point.</p></td>
+</tr>
+<tr>
+<td><p><code>Start_Y</code></p></td>
+<td><p>dimension</p></td>
+<td><p>The y-coordinate of the start point.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="text_properties">Text Properties</h5>
+<div class="paragraph">
+<p>These properties apply to text objects (footprint fields, free text labels, etc).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 15%;">
+<col style="width: 15%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Property</th>
+<th class="tableblock halign-left valign-top">Data type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>Bold</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the text is bold.</p></td>
+</tr>
+<tr>
+<td><p><code>Height</code></p></td>
+<td><p>dimension</p></td>
+<td><p>Height of a character in the font.</p></td>
+</tr>
+<tr>
+<td><p><code>Horizontal_Justification</code></p></td>
+<td><p>string</p></td>
+<td><p>Horizontal text justification (alignment): one of "Left", "Center", or "Right".</p></td>
+</tr>
+<tr>
+<td><p><code>Italic</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the text is italic.</p></td>
+</tr>
+<tr>
+<td><p><code>Knockout</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the text has the knockout property set.</p></td>
+</tr>
+<tr>
+<td><p><code>Mirrored</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the text is mirrored.</p></td>
+</tr>
+<tr>
+<td><p><code>Name</code></p></td>
+<td><p>string</p></td>
+<td><p>The name of a footprint field. For text objects that are not
+    footprint fields, this is an empty string.</p></td>
+</tr>
+<tr>
+<td><p><code>Text</code></p></td>
+<td><p>string</p></td>
+<td><p>The contents of the text object.</p></td>
+</tr>
+<tr>
+<td><p><code>Thickness</code></p></td>
+<td><p>dimension</p></td>
+<td><p>Thickness of the stroke of the font.</p></td>
+</tr>
+<tr>
+<td><p><code>Width</code></p></td>
+<td><p>dimension</p></td>
+<td><p>Width of a character in the font.</p></td>
+</tr>
+<tr>
+<td><p><code>Vertical_Justification</code></p></td>
+<td><p>string</p></td>
+<td><p>Vertical text alignment: one of "Top", "Center", or "Bottom".</p></td>
+</tr>
+<tr>
+<td><p><code>Visible</code></p></td>
+<td><p>boolean</p></td>
+<td><p>True if the text object is visible (displayed).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect4">
+<h5 id="expression_functions">Expression functions</h5>
+<div class="paragraph">
+<p>The following functions can be called on objects in custom rule expressions:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 10%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Objects</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><p><code>enclosedByArea('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if all of the object is inside the named rule area or zone.  Note that
+      <code>enclosedByArea()</code> is slower than <code>intersectsArea()</code>. Use <code>intersectsArea()</code> where possible.</p></td>
+</tr>
+<tr>
+<td><p><code>existsOnLayer('layer_id')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object exists on the given board layer.  <code>layer_id</code> is a string
+      containing the name of a board layer.</p></td>
+</tr>
+<tr>
+<td><p><code>fromTo('x', 'y')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object exists on the copper path between the given pads.  <code>x</code> and <code>y</code> are
+      the full names of pads in the design, such as <code>'R1-Pad1'</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>getField('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns the value of field <code>x</code> in the object. Note that only footprints have fields, so no field will
+      be returned unless the object is is a footprint.</p></td>
+</tr>
+<tr>
+<td><p><code>hasComponentClass('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the set of component classes assigned to the object contains the named component class <code>x</code>.
+      Note that only footprints have component classes, so this function will only return true if the object is
+      a footprint. In most cases, you will want to check if an object is part of a footprint that has a specific
+      component class. For this query, see the <code>memberOfFootprint()</code> expression function.</p></td>
+</tr>
+<tr>
+<td><p><code>hasExactNetclass('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the set of net classes assigned to the object exactly matches the named set of net
+      classes <code>x</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>hasNetclass('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the set of net classes assigned to the object contains the named net class <code>x</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>inDiffPair('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is part of a differential pair and the base name of the pair
+      matches the given argument <code>x</code>.  For example, <code>inDiffPair('/USB_')</code> or <code>inDiffPair('/USB')</code> both return
+      <code>true</code> for objects in the nets <code>/USB_P</code> and <code>/USB_N</code>.  <code>*</code> and <code>?</code> can be used as wildcards, so
+      <code>inDiffPair('/USB*')</code> matches <code>/USB1_P</code> and <code>/USB1_N</code> as well as <code>/USB2_P</code> and <code>/USB2_N</code>.  Note this
+      will always return false if the given net is not a diff pair, meaning that there isn&#8217;t a matching net of
+      the opposite polarity.  So, on a board with a net named <code>/USB_P</code> but no net named <code>/USB_N</code>, this function
+      returns false.</p></td>
+</tr>
+<tr>
+<td><p><code>insideArea('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if any part of the object is inside the named rule area or zone.  Rule area and zone
+      names can be set in their respective properties dialogs.  If the given area is a filled copper zone, the
+      function tests if the given object is inside any of the filled copper regions of the zone,
+      not if the object is inside the zone&#8217;s outline.</p>
+<p class="tableblock">    <strong>Deprecated</strong>; use <code>intersectsArea()</code> instead.</p></td>
+</tr>
+<tr>
+<td><p><code>insideCourtyard('x')</code></p>
+<p class="tableblock">  <code>insideFrontCourtyard('x')</code></p>
+<p class="tableblock">  <code>insideBackCourtyard('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Returns true if the any part of the object is inside the courtyard of the given footprint.  The
+    first variant checks both the front or back courtyard and returns true if the object is inside
+    either one; the second and third variants check a courtyard on a specific layer.
+    The named footprint <code>x</code> can be one of the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A reference designator, possibly containing wildcards <code>*</code> and <code>?</code>. <code>insideCourtyard('R?')</code>
+will check all footprints with references that contain <code>R</code> followed by a single character, while
+<code>insideCourtyard('R*')</code> will check all footprints with reference designators starting with <code>R</code>.</p>
+</li>
+<li>
+<p>A footprint library identifier in <code>&lt;footprint_library&gt;:&lt;footprint_name&gt;</code> format, possibly
+containing wildcards <code>*</code> and <code>?</code>. <code>insideCourtyard('Resistor_SMD:*')</code> will check all footprints
+in the <code>Resistor_SMD</code> library.</p>
+</li>
+<li>
+<p>A component class, in the form <code>${Class:ClassName}</code>. The <code>Class</code> keyword is not case-sensitive,
+but component class names are case-sensitive. The function will return true if the object is
+inside the courtyard of a footprint with the named component class.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Deprecated</strong>; use <code>intersectsCourtyard()</code>, <code>intersectsFrontCourtyard()</code>, and <code>intersectsBackCourtyard()</code> instead.</p>
+</div></div></td>
+</tr>
+<tr>
+<td><p><code>intersectsArea('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if any part of the object is inside the named rule area or zone.  Rule area and zone
+      names can be set in their respective properties dialogs.  If the given area is a filled copper zone, the
+      function tests if the given object is inside any of the filled copper regions of the zone,
+      not if the object is inside the zone&#8217;s outline.</p></td>
+</tr>
+<tr>
+<td><p><code>intersectsCourtyard('x')</code></p>
+<p class="tableblock">  <code>intersectsFrontCourtyard('x')</code></p>
+<p class="tableblock">  <code>intersectsBackCourtyard('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Returns true if any part of the object is inside the courtyard of the given footprint.  The
+    first variant checks both the front or back courtyard and returns true if the object is inside
+    either one; the second and third variants check a courtyard on a specific layer.
+    The named footprint <code>x</code> can be one of the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A reference designator, possibly containing wildcards <code>*</code> and <code>?</code>. <code>intersectsCourtyard('R?')</code>
+will check all footprints with references that contain <code>R</code> followed by a single character, while
+<code>intersectsCourtyard('R*')</code> will check all footprints with reference designators starting with <code>R</code>.</p>
+</li>
+<li>
+<p>A footprint library identifier in <code>&lt;footprint_library&gt;:&lt;footprint_name&gt;</code> format, possibly
+containing wildcards <code>*</code> and <code>?</code>. <code>intersectsCourtyard('Resistor_SMD:*')</code> will check all footprints
+in the <code>Resistor_SMD</code> library.</p>
+</li>
+<li>
+<p>A component class, in the form <code>${Class:ClassName}</code>. The <code>Class</code> keyword is not case-sensitive,
+but component class names are case-sensitive. The function will return true if the object intersects
+the courtyard of a footprint with the named component class.</p>
+</li>
+</ul>
+</div></div></td>
+</tr>
+<tr>
+<td><p><code>isBlindBuriedVia()</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a blind/buried via.</p></td>
+</tr>
+<tr>
+<td><p><code>isCoupledDiffPair()</code></p></td>
+<td><p><code>AB</code></p></td>
+<td><p>Returns true if the two objects being tested are part of the same differential pair but are
+    opposite polarities.  For example, returns true if <code>A</code> is in net <code>/USB+</code> and <code>B</code> is in net
+    <code>/USB-</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>isMicroVia()</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a microvia.</p></td>
+</tr>
+<tr>
+<td><p><code>isPlated()</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a plated hole (in a pad or via).</p></td>
+</tr>
+<tr>
+<td><p><code>memberOf('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a member of the named group <code>x</code>.</p>
+<p class="tableblock">  <strong>Deprecated</strong>; use <code>memberOfGroup()</code> instead.</p></td>
+</tr>
+<tr>
+<td><p><code>memberOfGroup('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a member of a group named <code>x</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>memberOfFootprint('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
+<p>Returns true if the object is a member of the given footprint.
+    The named footprint <code>x</code> can be one of the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A reference designator, possibly containing wildcards <code>*</code> and <code>?</code>. <code>memberOfFootprint('R?')</code>
+will match all footprints with references that contain <code>R</code> followed by a single character, while
+<code>memberOfFootprint('R*')</code> will match all footprints with reference designators starting with <code>R</code>.</p>
+</li>
+<li>
+<p>A footprint library identifier in <code>&lt;footprint_library&gt;:&lt;footprint_name&gt;</code> format, possibly
+containing wildcards <code>*</code> and <code>?</code>. <code>memberOfFootprint('Resistor_SMD:*')</code> will match all footprints
+in the <code>Resistor_SMD</code> library.</p>
+</li>
+<li>
+<p>A component class, in the form <code>${Class:ClassName}</code>. The <code>Class</code> keyword is not case-sensitive,
+but component class names are case-sensitive. The function will return true if the object is a
+member of a footprint with the named component class.</p>
+</li>
+</ul>
+</div></div></td>
+</tr>
+<tr>
+<td><p><code>memberOfSheet('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a member of a schematic sheet named <code>x</code>. The sheet path can contain
+    wildcards <code>\*</code> and <code>?</code>. This does not check subsheets: objects in child hierarchical sheets of <code>x</code>
+    are not considered members of <code>x</code>. To check if an object is in a sheet or any of that sheet&#8217;s child
+    sheets, use <code>memberOfSheetOrChildren()</code>.</p></td>
+</tr>
+<tr>
+<td><p><code>memberOfSheetOrChildren('x')</code></p></td>
+<td><p><code>A</code> or <code>B</code></p></td>
+<td><p>Returns true if the object is a member of a schematic sheet named <code>x</code> or any of its child hierarchical
+    sheets. The sheet path can contain wildcards <code>\*</code> and <code>?</code>.
+    Note: this function was added in KiCad 9.0.2.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="custom_design_rule_examples">Custom design rule examples</h4>
+<div class="sect4">
+<h5 id="basic_examples">Basic examples</h5>
+<div class="listingblock">
+<div class="content">
+<pre>(rule RF_width
+    (layer outer)
+    (condition "A.hasNetclass('RF')")
+    (constraint track_width (min 0.35mm) (max 0.35mm)))
+
+(rule "BGA neckdown"
+    (constraint track_width (min 0.2mm) (opt 0.25mm))
+    (constraint clearance (min 0.05mm) (opt 0.08mm))
+    (condition "A.intersectsCourtyard('U3')"))
+
+# Specify an optimal gap for a particular differential pair
+(rule "Clock gap"
+    (condition "A.inDiffPair('/CLK')")
+    (constraint diff_pair_gap (opt 0.8mm)))
+
+# Specify a larger clearance between differential pairs and anything else
+(rule "Differential pair clearance"
+    (condition "A.inDiffPair('*') &amp;&amp; !AB.isCoupledDiffPair()")
+    (constraint clearance (min 1.5mm)))
+
+(rule "copper keepout"
+    (constraint disallow track via zone)
+    (condition "A.intersectsArea('zone3')"))
+
+(rule "minimum creepage distance for high voltage nets"
+    (condition "A.hasNetclass('HV')")
+    (constraint creepage (min 5mm)))</pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="various_clearances">Various clearances</h5>
+<div class="listingblock">
+<div class="content">
+<pre>(rule "Clearance between Pads of Different Nets"
+    (constraint clearance (min 3.0mm))
+    (condition "A.Type == 'Pad' &amp;&amp; B.Type == 'Pad' &amp;&amp; A.Net != B.Net"))
+
+(rule "Pad to Track Clearance"
+    (constraint clearance (min 0.2mm))
+    (condition "A.Type == 'Pad' &amp;&amp; B.Type == 'Track'"))
+
+# Enforce a clearance around pads (and other copper objects) in a specific footprint
+(rule "Pad clearance in R1"
+    (constraint clearance (min 1mm))
+    (condition "A.memberOfFootprint('TP1')"))
+
+# Enforce a mechanical clearance between components and board edge
+(rule front_mechanical_board_edge_clearance
+    (layer "F.Courtyard")
+    (constraint physical_clearance (min 3mm))
+    (condition "B.Layer == 'Edge.Cuts'"))
+
+# Prevent copper pours under capacitors
+(rule "No copper pours under capacitors"
+    (constraint physical_clearance (min 0.1mm))
+    (condition "A.Type == 'Zone' &amp;&amp; B.Reference == 'C*'")
+)
+
+# This assumes that there is a cutout with 1mm thick lines
+(rule "Clearance to cutout"
+    (constraint edge_clearance (min 0.8mm))
+    (condition "A.Layer=='Edge.Cuts' &amp;&amp; A.Line_Width == 1.0mm"))
+
+# prevent silk over tented vias
+(rule silk_over_via
+    (constraint silk_clearance (min 0.2mm))
+    (condition "A.Type == '*Text' &amp;&amp; B.Type == 'Via'"))
+
+(rule "Allow connector silk to intersect board edge"
+    (constraint silk_clearance)
+    (severity ignore)
+    (condition "A.memberOfFootprint('J*') &amp;&amp; B.Layer=='Edge.Cuts'"))
+
+(rule "Distance between Vias of Different Nets"
+    (constraint hole_to_hole (min 0.254mm))
+    (condition "A.Type == 'Via' &amp;&amp; B.Type == 'Via' &amp;&amp; A.Net != B.Net"))
+
+(rule "Via Hole to Track Clearance"
+    (constraint hole_clearance (min 0.254mm))
+    (condition "A.Type == 'Via' &amp;&amp; B.Type == 'Track'"))
+
+(rule "Distance between test points"
+    (constraint courtyard_clearance (min 1.5mm))
+    (condition "A.Reference =='TP*' &amp;&amp; B.Reference == 'TP*"))</pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="high_current_design_rules">High-current design rules</h5>
+<div class="listingblock">
+<div class="content">
+<pre># Check current-carrying capacity
+(rule high-current
+    (constraint track_width (min 1.0mm))
+    (constraint connection_width (min 0.8mm))
+    (condition "A.hasNetclass('Power')"))
+
+# Don't use thermal reliefs on heatsink pads
+(rule heat_sink_pad
+    (constraint zone_connection solid)
+    (condition "A.Fabrication_Property == 'Heatsink pad'"))
+
+# Require all four thermal relief spokes to connect to parent zone
+(rule fully_spoked_pads
+    (constraint min_resolved_spokes 4))
+
+# Set thermal relief gap &amp; spoke width for all zones
+(rule defined_relief
+    (constraint thermal_relief_gap (min 10mil))
+    (constraint thermal_spoke_width (min 12mil)))
+
+# Override thermal relief gap &amp; spoke width for GND and PWR zones
+(rule defined_relief_pwr
+    (constraint thermal_relief_gap (min 10mil))
+    (constraint thermal_spoke_width (min 12mil))
+    (condition "A.Name == 'zone_GND' || A.Name == 'zone_PWR'"))
+
+# Prevent solder wicking from SMD pads
+(rule holes_in_pads
+    (constraint physical_hole_clearance (min 0.2mm))
+    (condition "B.Pad_Type == 'SMD'"))
+
+# Disallow solder mask margin overrides
+(rule "disallow solder mask margin overrides"
+    (constraint assertion "A.Soldermask_Margin_Override == 0mm")
+    (condition "A.Type == 'Pad'"))</pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="hole_sizes">Hole sizes</h5>
+<div class="listingblock">
+<div class="content">
+<pre>(rule "Max Drill Hole Size Mechanical"
+    (constraint hole_size (max 6.3mm))
+    (condition "A.Pad_Type == 'NPTH, mechanical'"))
+
+(rule "Max Drill Hole Size PTH"
+    (constraint hole_size (max 6.35mm))
+    (condition "A.Pad_Type == 'Through-hole'"))
+
+# Separate drill bit and milling cutter size constraints
+(rule "Plated through-hole size"
+    (constraint hole_size (min 0.2mm) (max 6.35mm))
+    (condition "A.isPlated() &amp;&amp; A.Hole_Size_X == A.Hole_Size_Y"))
+
+(rule "Plated slot size"
+    (constraint hole_size (min 0.5mm))
+    (condition "A.isPlated() &amp;&amp; A.Hole_Size_X != A.Hole_Size_Y"))</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
